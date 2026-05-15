@@ -5,6 +5,12 @@
 #
 # 前置条件:
 #   在 GitHub 设置 SERVER_SSH_KEY → Secrets（服务器 /root/.ssh/id_ed25519 的内容）
+#
+# 架构:
+#   pstep-engine 是 CI 主入口（当前为空壳，跳过构建）
+#   pi 的 npm 包直接从 npm registry 安装（@earendil-works/pi-*）
+#   pstep-gateway + pstep-web 都是公开仓库，clone 无需认证
+#   SERVER_SSH_KEY 仅用于部署阶段 SSH 连接服务器
 
 name: 🚀 一键构建 + 部署
 
@@ -23,15 +29,7 @@ jobs:
 
     steps:
       # ============================================================
-      # 0. 配置 SSH agent（比 actions/checkout 自带的 ssh-key 更稳）
-      # ============================================================
-      - name: 🔑 Setup SSH agent
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: \${{ secrets.SERVER_SSH_KEY }}
-
-      # ============================================================
-      # 1. Clone 仓库
+      # 1. Clone 仓库（公开仓库，无需认证）
       # ============================================================
       - name: 🔨 Checkout pstep-engine
         uses: actions/checkout@v4
