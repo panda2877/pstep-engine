@@ -50,14 +50,14 @@ jobs:
 
       - name: 🚀 Deploy to server
         env:
-          SSH_KEY: \${{ secrets.SERVER_SSH_KEY }}
+          SSH_KEY_B64: \${{ secrets.SERVER_SSH_KEY }}
         run: |
           set -e
 
-          # 配置 SSH（用 printf 代替 echo，避免特殊字符问题）
+          # 配置 SSH（base64 解码，避免多行格式问题）
           mkdir -p ~/.ssh
           ssh-keyscan -H 43.173.101.44 >> ~/.ssh/known_hosts 2>/dev/null
-          printf '%s\n' "\$SSH_KEY" > ~/.ssh/deploy_key
+          echo "\$SSH_KEY_B64" | base64 -d > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
 
           echo "🛑 停止服务..."
