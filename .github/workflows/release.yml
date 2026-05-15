@@ -4,13 +4,13 @@
 # 效果: 构建 pstep-gateway + pstep-web → SCP 到服务器 → 重启服务
 #
 # 前置条件:
-#   1. 在 GitHub 设置 GH_PAT (Personal Access Token) → Secrets
-#   2. 在 GitHub 设置 SERVER_SSH_KEY → Secrets
+#   在 GitHub 设置 SERVER_SSH_KEY → Secrets（服务器 /root/.ssh/id_ed25519 的内容）
 #
 # 架构:
 #   pstep-engine 是 CI 主入口（当前为空壳，跳过构建）
 #   pi 的 npm 包直接从 npm registry 安装（@earendil-works/pi-*）
 #   pstep-gateway + pstep-web 在 CI 上构建并部署
+#   所有仓库 clone 和服务器部署共用同一把 SSH key
 
 name: 🚀 一键构建 + 部署
 
@@ -29,24 +29,23 @@ jobs:
 
     steps:
       # ============================================================
-      # 1. Clone 仓库
+      # 1. Clone 仓库（全部用 SSH key，不需要 PAT）
       # ============================================================
       - name: 🔨 Checkout pstep-engine
         uses: actions/checkout@v4
-        # 空壳，跳过构建
 
       - name: 🔨 Checkout pstep-gateway
         uses: actions/checkout@v4
         with:
           repository: panda2877/pstep-gateway
-          token: \${{ secrets.GH_PAT }}
+          ssh-key: \${{ secrets.SERVER_SSH_KEY }}
           path: pstep-gateway
 
       - name: 🔨 Checkout pstep-web
         uses: actions/checkout@v4
         with:
           repository: panda2877/pstep-web
-          token: \${{ secrets.GH_PAT }}
+          ssh-key: \${{ secrets.SERVER_SSH_KEY }}
           path: pstep-web
 
       # ============================================================
