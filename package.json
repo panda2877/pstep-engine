@@ -1,0 +1,30 @@
+{
+  "name": "plan-solve-core",
+  "version": "0.1.0",
+  "private": false,
+  "type": "module",
+  "description": "Plan & Solve custom agent logic — message types, tools, hooks for multi-step reasoning",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@panda2877/pi-agent-core": "^0.74.0",
+    "@panda2877/pi-ai": "^0.74.0",
+    "typebox": "^0.34.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/panda2877/plan-solve-core.git"
+  }
+}
