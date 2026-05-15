@@ -50,37 +50,37 @@ jobs:
 
       - name: 🚀 Deploy to server
         env:
-          SSH_KEY_B64: \${{ secrets.SERVER_SSH_KEY }}
+          SSH_KEY_B64: ${{ secrets.SERVER_SSH_KEY }}
         run: |
           set -e
 
           # 配置 SSH（base64 解码，避免多行格式问题）
           mkdir -p ~/.ssh
-          ssh-keyscan -H 43.173.101.44 >> ~/.ssh/known_hosts 2>/dev/null
-          echo "\$SSH_KEY_B64" | base64 -d > ~/.ssh/deploy_key
+          ssh-keyscan -H 43.173.101.44 >> ~/.ssh/known_hosts 2>/dev/null || echo "[WARN] ssh-keyscan failed"
+          echo "$SSH_KEY_B64" | base64 -d > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
 
           echo "🛑 停止服务..."
-          ssh -i ~/.ssh/deploy_key root@43.173.101.44 'systemctl stop pstep-web pstep-gateway'
+          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key root@43.173.101.44 'systemctl stop pstep-web pstep-gateway'
 
           echo "📦 备份..."
-          TS=\$(date +%Y%m%d_%H%M%S)
-          ssh -i ~/.ssh/deploy_key root@43.173.101.44 "mkdir -p /opt/pstep/backups/\$TS &&             cp -r /opt/pstep/gateway /opt/pstep/backups/\$TS/ &&             cp -r /opt/pstep/web /opt/pstep/backups/\$TS/"
+          TS=$(date +%Y%m%d_%H%M%S)
+          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key root@43.173.101.44 "mkdir -p /opt/pstep/backups/$TS &&             cp -r /opt/pstep/gateway /opt/pstep/backups/$TS/ &&             cp -r /opt/pstep/web /opt/pstep/backups/$TS/"
 
           echo "📤 部署 gateway..."
-          ssh -i ~/.ssh/deploy_key root@43.173.101.44 'rm -rf /opt/pstep/gateway/dist/* /opt/pstep/gateway/node_modules'
-          tar cz -C pstep-gateway dist node_modules |             ssh -i ~/.ssh/deploy_key root@43.173.101.44 'tar xz -C /opt/pstep/gateway'
+          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key root@43.173.101.44 'rm -rf /opt/pstep/gateway/dist/* /opt/pstep/gateway/node_modules'
+          tar cz -C pstep-gateway dist node_modules |             ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key root@43.173.101.44 'tar xz -C /opt/pstep/gateway'
 
           echo "📤 部署 web..."
-          ssh -i ~/.ssh/deploy_key root@43.173.101.44 'rm -rf /opt/pstep/web/dist/*'
-          tar cz -C pstep-web dist |             ssh -i ~/.ssh/deploy_key root@43.173.101.44 'tar xz -C /opt/pstep/web'
+          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key root@43.173.101.44 'rm -rf /opt/pstep/web/dist/*'
+          tar cz -C pstep-web dist |             ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key root@43.173.101.44 'tar xz -C /opt/pstep/web'
 
           echo "🚀 启动服务..."
-          ssh -i ~/.ssh/deploy_key root@43.173.101.44 'systemctl start pstep-gateway && sleep 3 && systemctl start pstep-web'
+          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key root@43.173.101.44 'systemctl start pstep-gateway && sleep 3 && systemctl start pstep-web'
 
           echo "🔍 健康检查..."
           sleep 2
-          ssh -i ~/.ssh/deploy_key root@43.173.101.44 '
+          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key root@43.173.101.44 '
             echo "=== Gateway Health ==="
             curl -s http://localhost:3001/health
             echo ""
