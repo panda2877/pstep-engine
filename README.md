@@ -1,6 +1,6 @@
-# plan-solve-core
+# pstep-engine
 
-> Plan & Solve 自定义 Agent 逻辑层
+> Pstep 自定义 Agent 逻辑引擎
 >
 > 基于 pi-agent-core + pi-ai 构建的自定义消息类型、工具、Agent 钩子
 
