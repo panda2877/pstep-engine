@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pstep Platform 架构总览</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #020617;
+  color: #e2e8f0;
+  font-family: 'JetBrains Mono', monospace;
+  display: flex;
+  justify-content: center;
+  padding: 40px 20px;
+}
+.container { max-width: 1100px; width: 100%; }
+.header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 32px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #1e293b;
+}
+.pulse-dot {
+  width: 10px; height: 10px;
+  background: #22d3ee;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+  flex-shrink: 0;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(34,211,238,0.4); }
+  50% { opacity: 0.6; box-shadow: 0 0 0 8px rgba(34,211,238,0); }
+}
+.header h1 { font-size: 20px; font-weight: 600; color: #f1f5f9; }
+.header .subtitle { font-size: 11px; color: #64748b; margin-top: 4px; }
+.diagram-card {
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+  overflow-x: auto;
+}
+.diagram-card svg { display: block; margin: 0 auto; }
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.card {
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 12px;
+  padding: 20px;
+}
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.card-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.card-dot.cyan { background: #22d3ee; }
+.card-dot.emerald { background: #34d399; }
+.card-dot.violet { background: #a78bfa; }
+.card-dot.amber { background: #fbbf24; }
+.card h3 { font-size: 13px; font-weight: 600; color: #e2e8f0; }
+.card ul { list-style: none; }
+.card li {
+  font-size: 11px;
+  color: #94a3b8;
+  padding: 4px 0;
+  line-height: 1.6;
+}
+.card li::before { content: "▸ "; color: #475569; }
+.footer {
+  text-align: center;
+  padding: 16px;
+  font-size: 10px;
+  color: #475569;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="pulse-dot"></div>
+    <div>
+      <h1>Pstep Platform · 系统架构</h1>
+      <div class="subtitle">4-Repository Architecture · pi-based · Multi-step Reasoning</div>
+    </div>
+  </div>
+
+  <div class="diagram-card">
+    <svg viewBox="0 0 1000 820" width="1000" height="820" xmlns="http://www.w3.org/2000/svg" style="font-family: 'JetBrains Mono', monospace;">
+      <defs>
+        <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+          <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"/>
+        </pattern>
+        <marker id="arrow-cyan" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 Z" fill="#22d3ee"/>
+        </marker>
+        <marker id="arrow-emerald" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 Z" fill="#34d399"/>
+        </marker>
+        <marker id="arrow-slate" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 Z" fill="#94a3b8"/>
+        </marker>
+        <marker id="arrow-amber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 Z" fill="#fbbf24"/>
+        </marker>
+        <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 Z" fill="#fb923c"/>
+        </marker>
+      </defs>
+
+      <!-- Grid -->
+      <rect width="1000" height="820" fill="url(#grid)"/>
+      <rect width="1000" height="820" fill="#020617" opacity="0.3"/>
+
+      <!-- ===== TITLE ===== -->
+      <text x="500" y="30" text-anchor="middle" fill="#f1f5f9" font-size="14" font-weight="600">GitHub 仓库架构</text>
+      <text x="500" y="46" text-anchor="middle" fill="#64748b" font-size="9">4 Repositories · 3 Layers · 1 Deployment Pipeline</text>
+
+      <!-- ===== Layer 0: pi (fork) ===== -->
+      <rect x="50" y="75" width="900" height="110" rx="8" fill="none" stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="8,4"/>
+      <text x="65" y="93" fill="#fbbf24" font-size="9" font-weight="600">▸ 层 0 · 基座 (Fork)</text>
+
+      <!-- pi repo box -->
+      <rect x="370" y="105" width="260" height="65" rx="6" fill="#0f172a" stroke="#fbbf24" stroke-width="1.5"/>
+      <rect x="372" y="107" width="256" height="61" rx="5.5" fill="rgba(120, 53, 15, 0.35)"/>
+
+      <text x="500" y="128" text-anchor="middle" fill="#fbbf24" font-size="12" font-weight="600">pi (fork)</text>
+      <text x="500" y="142" text-anchor="middle" fill="#d4a574" font-size="9">@panda2877/pi</text>
+      <text x="500" y="156" text-anchor="middle" fill="#92400e" font-size="7.5">MIT · Fork from earendil-works/pi</text>
+
+      <!-- sub packages -->
+      <rect x="85" y="105" width="110" height="40" rx="4" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="140" y="122" text-anchor="middle" fill="#22d3ee" font-size="8">pi-ai</text>
+      <text x="140" y="134" text-anchor="middle" fill="#64748b" font-size="7">LLM 抽象层</text>
+
+      <rect x="210" y="105" width="130" height="40" rx="4" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1"/>
+      <text x="275" y="122" text-anchor="middle" fill="#34d399" font-size="8">pi-agent-core</text>
+      <text x="275" y="134" text-anchor="middle" fill="#64748b" font-size="7">Agent 运行时</text>
+
+      <rect x="650" y="105" width="130" height="40" rx="4" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="715" y="122" text-anchor="middle" fill="#22d3ee" font-size="8">pi-web-ui</text>
+      <text x="715" y="134" text-anchor="middle" fill="#64748b" font-size="7">Web 组件库</text>
+
+      <!-- ===== Layer 1: Our code ===== -->
+      <rect x="50" y="210" width="900" height="210" rx="8" fill="none" stroke="#34d399" stroke-width="1.5" stroke-dasharray="8,4"/>
+      <text x="65" y="228" fill="#34d399" font-size="9" font-weight="600">▸ 层 1 · 自定义扩展 (我们的代码)</text>
+
+      <!-- Arrow from pi-agent-core down -->
+      <line x1="275" y1="145" x2="275" y2="235" stroke="#94a3b8" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arrow-slate)"/>
+      <line x1="140" y1="145" x2="200" y2="235" stroke="#94a3b8" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arrow-slate)"/>
+      <line x1="715" y1="145" x2="715" y2="235" stroke="#94a3b8" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arrow-slate)"/>
+
+      <!-- pstep-engine -->
+      <rect x="80" y="240" width="280" height="80" rx="6" fill="#0f172a" stroke="#34d399" stroke-width="1.5"/>
+      <rect x="82" y="242" width="276" height="76" rx="5.5" fill="rgba(6, 78, 59, 0.4)"/>
+      <text x="220" y="263" text-anchor="middle" fill="#34d399" font-size="12" font-weight="600">pstep-engine</text>
+      <text x="220" y="278" text-anchor="middle" fill="#6ee7b7" font-size="8">Plan · Solve · Verify 消息类型</text>
+      <text x="220" y="291" text-anchor="middle" fill="#6ee7b7" font-size="8">自定义工具 · Agent 钩子 · 循环控制</text>
+      <text x="220" y="306" text-anchor="middle" fill="#64748b" font-size="7">deps: pi-agent-core, pi-ai</text>
+
+      <!-- pstep-gateway -->
+      <rect x="420" y="240" width="280" height="80" rx="6" fill="#0f172a" stroke="#fb923c" stroke-width="1.5"/>
+      <rect x="422" y="242" width="276" height="76" rx="5.5" fill="rgba(251, 146, 60, 0.2)"/>
+      <text x="560" y="263" text-anchor="middle" fill="#fb923c" font-size="12" font-weight="600">pstep-gateway</text>
+      <text x="560" y="278" text-anchor="middle" fill="#fdba74" font-size="8">OpenAI 兼容 API</text>
+      <text x="560" y="291" text-anchor="middle" fill="#fdba74" font-size="8">路由分发 · API Key 管理 · SSE 转发</text>
+      <text x="560" y="306" text-anchor="middle" fill="#64748b" font-size="7">零依赖 pi · 独立部署</text>
+
+      <!-- Arrow between core and gateway -->
+      <line x1="360" y1="280" x2="418" y2="280" stroke="#fb923c" stroke-width="1" marker-end="url(#arrow-orange)"/>
+
+      <!-- pstep-web -->
+      <rect x="80" y="340" width="620" height="65" rx="6" fill="#0f172a" stroke="#22d3ee" stroke-width="1.5"/>
+      <rect x="82" y="342" width="616" height="61" rx="5.5" fill="rgba(8, 51, 68, 0.4)"/>
+      <text x="390" y="362" text-anchor="middle" fill="#22d3ee" font-size="12" font-weight="600">pstep-engine (主仓库)</text>
+      <text x="390" y="377" text-anchor="middle" fill="#67e8f9" font-size="8">自定义 UI (PlanPanel · SolveView · VerifyTimeline)</text>
+      <text x="390" y="391" text-anchor="middle" fill="#64748b" font-size="7">deps: pi-web-ui, pstep-engine</text>
+
+      <!-- Arrows from core/gateway to app -->
+      <line x1="220" y1="320" x2="220" y2="338" stroke="#34d399" stroke-width="1" marker-end="url(#arrow-emerald)"/>
+      <line x1="560" y1="320" x2="560" y2="338" stroke="#22d3ee" stroke-width="1" marker-end="url(#arrow-cyan)"/>
+
+      <!-- ===== Layer 2: Deployment ===== -->
+      <rect x="50" y="445" width="900" height="170" rx="8" fill="none" stroke="#22d3ee" stroke-width="1.5" stroke-dasharray="8,4"/>
+      <text x="65" y="463" fill="#22d3ee" font-size="9" font-weight="600">▸ 层 2 · 部署 (服务器 43.173.101.44)</text>
+
+      <!-- CI/CD pipeline -->
+      <rect x="80" y="475" width="200" height="50" rx="6" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1"/>
+      <text x="180" y="495" text-anchor="middle" fill="#e2e8f0" font-size="9">GitHub Actions</text>
+      <text x="180" y="510" text-anchor="middle" fill="#94a3b8" font-size="7">一键发布 · Docker 构建</text>
+
+      <!-- Docker Compose -->
+      <rect x="320" y="475" width="200" height="50" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1"/>
+      <text x="420" y="495" text-anchor="middle" fill="#a78bfa" font-size="9">docker-compose.yml</text>
+      <text x="420" y="510" text-anchor="middle" fill="#94a3b8" font-size="7">编排 gateway + app</text>
+
+      <!-- ghcr.io -->
+      <rect x="560" y="475" width="180" height="50" rx="6" fill="rgba(120, 53, 15, 0.3)" stroke="#fbbf24" stroke-width="1"/>
+      <text x="650" y="495" text-anchor="middle" fill="#fbbf24" font-size="9">ghcr.io</text>
+      <text x="650" y="510" text-anchor="middle" fill="#94a3b8" font-size="7">容器镜像仓库</text>
+
+      <!-- cloud server -->
+      <rect x="320" y="545" width="280" height="55" rx="6" fill="rgba(8, 51, 68, 0.3)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="460" y="565" text-anchor="middle" fill="#22d3ee" font-size="10" font-weight="600">🐳 云服务器 · 43.173.101.44</text>
+      <text x="460" y="582" text-anchor="middle" fill="#94a3b8" font-size="8">gateway:3001 → app:5173</text>
+
+      <!-- arrows -->
+      <line x1="280" y1="500" x2="318" y2="500" stroke="#94a3b8" stroke-width="1" marker-end="url(#arrow-slate)"/>
+      <line x1="520" y1="500" x2="558" y2="500" stroke="#fbbf24" stroke-width="1" marker-end="url(#arrow-amber)"/>
+      <line x1="460" y1="525" x2="460" y2="543" stroke="#22d3ee" stroke-width="1" marker-end="url(#arrow-cyan)"/>
+
+      <!-- ===== Arrow from app/gateway to deployment ===== -->
+      <line x1="150" y1="405" x2="150" y2="473" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrow-cyan)"/>
+      <line x1="390" y1="405" x2="400" y2="473" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrow-cyan)"/>
+
+      <!-- ===== Layer 3: External APIs ===== -->
+      <rect x="50" y="640" width="900" height="60" rx="8" fill="none" stroke="#fb7185" stroke-width="1.5" stroke-dasharray="8,4"/>
+      <text x="65" y="658" fill="#fb7185" font-size="9" font-weight="600">▸ 层 3 · 上游 API</text>
+
+      <!-- upstream boxes -->
+      <rect x="140" y="650" width="150" height="36" rx="6" fill="rgba(136, 19, 55, 0.3)" stroke="#fb7185" stroke-width="1"/>
+      <text x="215" y="672" text-anchor="middle" fill="#fb7185" font-size="10">Anthropic</text>
+
+      <rect x="340" y="650" width="150" height="36" rx="6" fill="rgba(136, 19, 55, 0.3)" stroke="#fb7185" stroke-width="1"/>
+      <text x="415" y="672" text-anchor="middle" fill="#fb7185" font-size="10">OpenAI</text>
+
+      <rect x="540" y="650" width="150" height="36" rx="6" fill="rgba(136, 19, 55, 0.3)" stroke="#fb7185" stroke-width="1"/>
+      <text x="615" y="672" text-anchor="middle" fill="#fb7185" font-size="10">其他 API</text>
+
+      <!-- arrows from gateway to upstream -->
+      <line x1="560" y1="600" x2="215" y2="648" stroke="#fb7185" stroke-width="1" marker-end="url(#arrow-cyan)" stroke-dasharray="4,3"/>
+      <line x1="560" y1="600" x2="415" y2="648" stroke="#fb7185" stroke-width="1" marker-end="url(#arrow-cyan)" stroke-dasharray="4,3"/>
+      <line x1="560" y1="600" x2="615" y2="648" stroke="#fb7185" stroke-width="1" marker-end="url(#arrow-cyan)" stroke-dasharray="4,3"/>
+
+      <!-- ===== Legend ===== -->
+      <rect x="720" y="650" width="210" height="90" rx="6" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+      <text x="825" y="668" text-anchor="middle" fill="#94a3b8" font-size="9" font-weight="600">图例</text>
+      <rect x="735" y="680" width="14" height="14" rx="2" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1"/>
+      <text x="755" y="691" fill="#94a3b8" font-size="9">前端 / UI</text>
+      <rect x="735" y="700" width="14" height="14" rx="2" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1"/>
+      <text x="755" y="711" fill="#94a3b8" font-size="9">后端 / 逻辑</text>
+      <rect x="880" y="680" width="14" height="14" rx="2" fill="rgba(120, 53, 15, 0.3)" stroke="#fbbf24" stroke-width="1"/>
+      <text x="900" y="691" fill="#94a3b8" font-size="9">外部依赖</text>
+      <rect x="880" y="700" width="14" height="14" rx="2" fill="rgba(251, 146, 60, 0.2)" stroke="#fb923c" stroke-width="1"/>
+      <text x="900" y="711" fill="#94a3b8" font-size="9">网关</text>
+    </svg>
+  </div>
+
+  <div class="cards-grid">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-dot amber"></div>
+        <h3>层 0 · pi (fork)</h3>
+      </div>
+      <ul>
+        <li>Fork 自 earendil-works/pi，MIT 协议</li>
+        <li>三个子包：pi-ai / pi-agent-core / pi-web-ui</li>
+        <li>作为 npm 依赖被引用</li>
+        <li>上游更新时 merge 即可</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-dot emerald"></div>
+        <h3>层 1 · 自定义扩展</h3>
+      </div>
+      <ul>
+        <li>pstep-engine: 消息/工具/钩子</li>
+        <li>pstep-gateway: 模型网关</li>
+        <li>pstep-web: UI + 入口</li>
+        <li>依赖 pi 的 npm 包</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-dot cyan"></div>
+        <h3>层 2 · 部署 & CI/CD</h3>
+      </div>
+      <ul>
+        <li>GitHub Actions → 一键发布</li>
+        <li>Docker 镜像推送到 ghcr.io</li>
+        <li>服务器 docker compose 拉取部署</li>
+        <li>私有 SSH Key 安全连接</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="footer">
+    Pstep Platform · panda2877 · Generated by Hermes Agent
+  </div>
+</div>
+</body>
+</html>
