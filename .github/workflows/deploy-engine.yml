@@ -1,0 +1,62 @@
+# ============================================================================
+# Pstep Engine — 独立部署工作流（占位）
+# 触发方式：
+#   1. 手动触发 (workflow_dispatch)
+#   2. push 到 main 分支时自动触发
+# 注意：Engine 尚未开发完成，此 workflow 为占位模板
+#       开发完成后请补充 build + deploy 步骤
+# ============================================================================
+
+name: 🚀 Deploy Engine
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号 (如 0.1.1)'
+        required: false
+        type: string
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - 'package.json'
+      - 'tsconfig.json'
+      - '.github/workflows/deploy.yml'
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+jobs:
+  deploy:
+    name: Build & Deploy Engine
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🔨 Checkout
+        uses: actions/checkout@v6
+
+      - name: ⚙️ Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🏗️ Build
+        run: npm run build
+
+      - name: 🚀 Deploy to server
+        env:
+          SSH_KEY_B64: ${{ secrets.SERVER_SSH_KEY }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+        run: |
+          echo '⚠️ Engine 部署尚未实现'
+          echo '开发完成后，请在此处添加：'
+          echo '  1. 停止 pstep-engine 服务'
+          echo '  2. 备份当前部署'
+          echo '  3. 部署 dist + node_modules'
+          echo '  4. 启动 pstep-engine 服务'
+          echo '  5. 健康检查'
