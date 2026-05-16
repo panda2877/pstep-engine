@@ -2,9 +2,9 @@
  * 数据库操作 DAO
  */
 
-import { getDatabaseManager } from './index.js';
-import { Project, ProjectRule, Session, SessionMessage, MemoryEntry } from '../types/rules.js';
-import { v4 as uuidv4 } from 'uuid';
+import { getDatabaseManager } from "./connection.js";
+import { Project, ProjectRule, Session, SessionMessage, MemoryEntry } from "../types/rules.js";
+import { v4 as uuidv4 } from "uuid";
 
 const db = getDatabaseManager();
 
@@ -34,7 +34,7 @@ const deleteProject = db.prepare(`
 `);
 
 export const ProjectDao = {
-  create(project: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>): Project {
+  create(project: Omit<Project, "id" | "createdAt" | "updatedAt">): Project {
     const id = uuidv4();
     const now = Date.now();
     insertProject.run(id, project.name, project.description || null, now, now);
@@ -49,7 +49,7 @@ export const ProjectDao = {
     return selectAllProjects.all() as Project[];
   },
 
-  update(id: string, data: Partial<Pick<Project, 'name' | 'description'>>): Project | null {
+  update(id: string, data: Partial<Pick<Project, "name" | "description">>): Project | null {
     const now = Date.now();
     const project = this.findById(id);
     if (!project) return null;
@@ -93,7 +93,7 @@ const deleteRulesByProject = db.prepare(`
 `);
 
 export const RuleDao = {
-  create(rule: Omit<ProjectRule, 'id' | 'createdAt' | 'updatedAt'>): ProjectRule {
+  create(rule: Omit<ProjectRule, "id" | "createdAt" | "updatedAt">): ProjectRule {
     const id = uuidv4();
     const now = Date.now();
     insertRule.run(
@@ -111,7 +111,7 @@ export const RuleDao = {
     return selectRulesByCategory.all(projectId, category) as ProjectRule[];
   },
 
-  update(id: string, data: Partial<Pick<ProjectRule, 'content' | 'priority'>>): ProjectRule | null {
+  update(id: string, data: Partial<Pick<ProjectRule, "content" | "priority">>): ProjectRule | null {
     const rule = this.findById(id);
     if (!rule) return null;
     const now = Date.now();
@@ -120,7 +120,7 @@ export const RuleDao = {
   },
 
   findById(id: string): ProjectRule | null {
-    const result = db.prepare('SELECT * FROM project_rules WHERE id = ?').get(id);
+    const result = db.prepare("SELECT * FROM project_rules WHERE id = ?").get(id);
     return result as ProjectRule | null;
   },
 
@@ -160,7 +160,7 @@ const deleteSession = db.prepare(`
 `);
 
 export const SessionDao = {
-  create(session: Omit<Session, 'id' | 'createdAt' | 'updatedAt'>): Session {
+  create(session: Omit<Session, "id" | "createdAt" | "updatedAt">): Session {
     const id = uuidv4();
     const now = Date.now();
     insertSession.run(id, session.projectId, session.title || null, now, now);
@@ -175,7 +175,7 @@ export const SessionDao = {
     return selectSessionsByProject.all(projectId) as Session[];
   },
 
-  update(id: string, data: Partial<Pick<Session, 'title'>>): Session | null {
+  update(id: string, data: Partial<Pick<Session, "title">>): Session | null {
     const session = this.findById(id);
     if (!session) return null;
     const now = Date.now();
@@ -207,7 +207,7 @@ const deleteMessagesBySession = db.prepare(`
 `);
 
 export const MessageDao = {
-  create(message: Omit<SessionMessage, 'id' | 'createdAt'>): SessionMessage {
+  create(message: Omit<SessionMessage, "id" | "createdAt">): SessionMessage {
     const id = uuidv4();
     const now = Date.now();
     insertMessage.run(id, message.sessionId, message.role, message.content, message.metadata || null, now);
@@ -245,7 +245,7 @@ const deleteMemoryByProject = db.prepare(`
 `);
 
 export const MemoryDao = {
-  create(entry: Omit<MemoryEntry, 'id' | 'createdAt'>): MemoryEntry {
+  create(entry: Omit<MemoryEntry, "id" | "createdAt">): MemoryEntry {
     const id = uuidv4();
     const now = Date.now();
     insertMemory.run(id, entry.projectId, entry.category, entry.summary, entry.sourceSessionId || null, now);
