@@ -28,7 +28,7 @@ export function getDatabaseManager(): InstanceType<typeof DatabaseConstructor> {
 /**
  * 初始化数据库表结构
  */
-function initializeDatabase(db: InstanceType<typeof DatabaseConstructor>): void {
+export function initializeDatabase(db: InstanceType<typeof DatabaseConstructor>): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS projects (
       id TEXT PRIMARY KEY,
