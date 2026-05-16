@@ -10,20 +10,24 @@ import { fileURLToPath } from "url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DB_PATH = process.env.PSTEP_DB_PATH || `${__dirname}/../../data/pstep.db`;
 
-let dbInstance: InstanceType<typeof DatabaseConstructor> | null = null;
-
 /**
- * 获取数据库实例
+ * 获取数据库实例（使用闭包避免 ESM TDZ 问题）
  */
 export function getDatabaseManager(): InstanceType<typeof DatabaseConstructor> {
-  if (!dbInstance) {
-    dbInstance = new DatabaseConstructor(DB_PATH);
-    // 启用 WAL 模式提升并发性能
-    dbInstance.pragma("journal_mode = WAL");
-    // 初始化数据库表
-    initializeDatabase(dbInstance);
-  }
-  return dbInstance;
+  // 使用函数内部变量避免模块级 TDZ
+  const getInstance = (() => {
+    let dbInstance: InstanceType<typeof DatabaseConstructor> | null = null;
+    return () => {
+      if (!dbInstance) {
+        dbInstance = new DatabaseConstructor(DB_PATH);
+        dbInstance.pragma("journal_mode = WAL");
+        initializeDatabase(dbInstance);
+      }
+      return dbInstance;
+    };
+  })();
+
+  return getInstance();
 }
 
 /**
