@@ -2,8 +2,7 @@ version: '3.8'
 
 services:
   gateway:
-    image: pstep-gateway:latest
-    build: ../pstep-gateway
+    image: ghcr.io/panda2877/pstep-gateway:latest
     ports:
       - '3001:3001'
     restart: unless-stopped
@@ -14,8 +13,7 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
 
   app:
-    image: pstep-web:latest
-    build: ../pstep-web
+    image: ghcr.io/panda2877/pstep-web:latest
     ports:
       - '5173:5173'
     environment:

@@ -1,100 +1,46 @@
-# 🚀 一键构建 + 部署（主仓库：pstep-engine）
-
-name: 🚀 一键构建 + 部署
+name: Release
 
 on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: '版本号 (如 1.0.0)'
-        required: true
-        type: string
+  push:
+    tags:
+      - 'v*'
+
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  NODE_VERSION: '20'
 
 jobs:
-  build-and-deploy:
-    name: 构建并部署 v${{ github.event.inputs.version }}
+  publish:
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: write
+      packages: write
+    
     steps:
-      - name: 🔨 Checkout pstep-engine
-        uses: actions/checkout@v6
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: 🔨 Checkout pstep-gateway
-        uses: actions/checkout@v6
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          repository: panda2877/pstep-gateway
-          path: pstep-gateway
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@panda2877'
 
-      - name: 🔨 Checkout pstep-web
-        uses: actions/checkout@v6
-        with:
-          repository: panda2877/pstep-web
-          path: pstep-web
+      - name: Install dependencies
+        run: npm ci
 
-      - name: ⚙️ Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 20
+      - name: Build
+        run: npm run build
 
-      - name: 🏗️ Build pstep-gateway
-        run: |
-          cd pstep-gateway
-          npm install
-          npm run build
+      - name: Run tests
+        run: npm test
 
-      - name: 🏗️ Build pstep-web
-        run: |
-          cd pstep-web
-          npm install
-          npm run build
-
-      - name: 🚀 Deploy to server
+      - name: Publish to GitHub Packages
+        run: npm publish
         env:
-          SSH_KEY_B64: ${{ secrets.SERVER_SSH_KEY }}
-          SERVER_HOST: ${{ vars.SERVER_HOST }}
-        run: |
-          set -e
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-          # 配置 SSH（base64 解码，避免多行格式问题）
-          mkdir -p ~/.ssh
-          ssh-keyscan -H $SERVER_HOST >> ~/.ssh/known_hosts 2>/dev/null || echo "[WARN] ssh-keyscan failed"
-          echo "$SSH_KEY_B64" | base64 -d > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-
-          echo "🛑 停止服务..."
-          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key root@$SERVER_HOST 'systemctl stop pstep-web pstep-gateway'
-
-          echo "📦 备份..."
-          TS=$(date +%Y%m%d_%H%M%S)
-          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key root@$SERVER_HOST "mkdir -p /opt/pstep/backups/$TS &&             cp -r /opt/pstep/gateway /opt/pstep/backups/$TS/ &&             cp -r /opt/pstep/web /opt/pstep/backups/$TS/"
-
-          echo "📤 部署 gateway..."
-          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key root@$SERVER_HOST 'rm -rf /opt/pstep/gateway/dist/* /opt/pstep/gateway/node_modules'
-          tar cz -C pstep-gateway dist node_modules |             ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key root@$SERVER_HOST 'tar xz -C /opt/pstep/gateway'
-
-          echo "📤 部署 web..."
-          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key root@$SERVER_HOST 'rm -rf /opt/pstep/web/dist/*'
-          tar cz -C pstep-web dist |             ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key root@$SERVER_HOST 'tar xz -C /opt/pstep/web'
-
-          echo "🚀 启动服务..."
-          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key root@$SERVER_HOST 'systemctl start pstep-gateway && sleep 3 && systemctl start pstep-web'
-
-          echo "🔍 健康检查..."
-          sleep 2
-          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key root@$SERVER_HOST '
-            echo "=== Gateway Health ==="
-            curl -s http://localhost:3001/health
-            echo ""
-            echo "=== Gateway Status ==="
-            systemctl is-active pstep-gateway
-            echo "=== Web Status ==="
-            systemctl is-active pstep-web
-            echo "=== Web HTTP ==="
-            curl -s -o /dev/null -w "HTTP %{http_code}" http://localhost:5173
-            echo ""
-          '
-
-          echo "✅ 部署完成!"
-
+      - name: Create release notes
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
