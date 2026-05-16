@@ -19,6 +19,8 @@ export function getDatabaseManager(): InstanceType<typeof DatabaseConstructor> {
   if (!dbInstance) {
     dbInstance = new DatabaseConstructor(DB_PATH);
     dbInstance.pragma("journal_mode = WAL");
+    // 初始化数据库表结构
+    initializeDatabase(dbInstance);
   }
   return dbInstance;
 }
@@ -26,7 +28,7 @@ export function getDatabaseManager(): InstanceType<typeof DatabaseConstructor> {
 /**
  * 初始化数据库表结构
  */
-export function initializeDatabase(db: InstanceType<typeof DatabaseConstructor>): void {
+function initializeDatabase(db: InstanceType<typeof DatabaseConstructor>): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS projects (
       id TEXT PRIMARY KEY,
