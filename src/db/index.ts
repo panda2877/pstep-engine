@@ -3,9 +3,9 @@
  * 提供 SQLite 数据库管理功能
  */
 
-import { Database } from 'better-sqlite3';
-import { dirname } from 'path';
-import { fileURLToPath } from 'url';
+import Database from "better-sqlite3";
+import { dirname } from "path";
+import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DB_PATH = process.env.PSTEP_DB_PATH || `${__dirname}/../../data/pstep.db`;
@@ -19,7 +19,7 @@ export function getDatabaseManager(): Database {
   if (!dbInstance) {
     dbInstance = new Database(DB_PATH);
     // 启用 WAL 模式提升并发性能
-    dbInstance.pragma('journal_mode = WAL');
+    dbInstance.pragma("journal_mode = WAL");
     // 初始化数据库表
     initializeDatabase(dbInstance);
   }
@@ -83,4 +83,4 @@ function initializeDatabase(db: Database): void {
 }
 
 // 导出 DAO 模块
-export * from './dao.js';
+export * from "./dao.js";
