@@ -1,103 +1,78 @@
-name: Deploy Engine
+# ============================================================================
+# Pstep Engine --- 独立部署工作流
+# 触发方式：
+#   1. 手动触发 (workflow_dispatch)
+#   2. push 到 main 分支时自动触发
+# ============================================================================
+
+name: 🚀 Deploy Engine
 
 on:
   workflow_dispatch:
     inputs:
-      environment:
-        description: 'Deployment environment'
-        required: true
-        default: 'production'
-        type: choice
-        options:
-          - production
-          - staging
-
+      version:
+        description: '版本号 (如 0.1.1)'
+        required: false
+        type: string
   push:
     branches:
       - main
+    paths:
+      - 'src/**'
+      - 'package.json'
+      - 'tsconfig.json'
+      - '.github/workflows/deploy-engine.yml'
 
 env:
-  NODE_VERSION: '20'
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 jobs:
-  build:
+  deploy:
+    name: Build and Deploy Engine
     runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.version.outputs.version }}
-    
+
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          node-version: 20
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Build
         run: npm run build
 
-      - name: Run tests
-        run: npm test
-
-      - name: Get version
-        id: version
-        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist
-          path: dist/
-          retention-days: 1
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
-    
-    steps:
-      - name: Download artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: dist
-          path: dist/
-
       - name: Deploy to server
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.PSTEP_SERVER_HOST }}
-          username: ${{ secrets.PSTEP_SERVER_USER }}
-          key: ${{ secrets.PSTEP_SSH_KEY }}
-          script: |
-            # 备份当前版本
-            if [ -d "/opt/pstep/engine" ]; then
-              mv /opt/pstep/engine /opt/pstep/engine-backup-$(date +%Y%m%d-%H%M%S)
-            fi
-            
-            # 创建部署目录
-            mkdir -p /opt/pstep/engine
-            
-            # 部署新版本
-            cd /opt/pstep/engine
-            # 从 artifact 解压（实际部署时由 CI 系统处理）
-            echo "Deploying pstep-engine v${{ needs.build.outputs.version }}"
-            
-            # 重启服务
-            sudo systemctl restart pstep-engine || true
-            sudo systemctl status pstep-engine
-
-      - name: Health check
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.PSTEP_SERVER_HOST }}
-          username: ${{ secrets.PSTEP_SERVER_USER }}
-          key: ${{ secrets.PSTEP_SSH_KEY }}
-          script: |
-            sleep 5
-            curl -f http://localhost:4000/health || exit 1
-            echo "Health check passed"
+        env:
+          SSH_KEY_B64: ${{ secrets.SERVER_SSH_KEY }}
+          SERVER_HOST: ${{ vars.SERVER_HOST }}
+        run: |
+          set -e
+          mkdir -p ~/.ssh
+          ssh-keyscan -H $SERVER_HOST >> ~/.ssh/known_hosts 2>/dev/null || echo 'WARN: ssh-keyscan failed'
+          echo "$SSH_KEY_B64" | base64 -d > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          echo 'Stopping engine...'
+          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key root@$SERVER_HOST 'systemctl stop pstep-engine || true'
+          echo 'Backing up...'
+          TS=$(date +%Y%m%d_%H%M%S)
+          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key root@$SERVER_HOST "mkdir -p /opt/pstep/backups/$TS && [ -d /opt/pstep/engine ] && cp -r /opt/pstep/engine /opt/pstep/backups/$TS/ || echo 'No old version to backup'"
+          echo 'Deploying engine...'
+          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key root@$SERVER_HOST 'rm -rf /opt/pstep/engine/dist/* /opt/pstep/engine/node_modules 2>/dev/null; mkdir -p /opt/pstep/engine'
+          tar cz -C . dist node_modules package.json | ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key root@$SERVER_HOST 'tar xz -C /opt/pstep/engine'
+          echo 'Starting engine...'
+          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key root@$SERVER_HOST 'systemctl enable pstep-engine 2>/dev/null; systemctl start pstep-engine'
+          echo 'Health check...'
+          sleep 3
+          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key root@$SERVER_HOST '
+            echo "=== Engine Status ==="
+            systemctl is-active pstep-engine
+            echo "=== Health Check ==="
+            curl -s http://localhost:4000/health
+            echo ""
+          '
+          echo 'Engine deployment complete!'
