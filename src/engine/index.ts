@@ -103,7 +103,7 @@ ${ruleText || 'No specific rules configured.'}
   /**
    * 执行 Plan/Solve/Verify 循环
    */
-  async execute(userMessage: string, sessionId: string): AsyncIterable<PstepMessage> {
+  async *execute(userMessage: string, sessionId: string): AsyncIterable<PstepMessage> {
     // TODO: Phase 2 - 实现完整的循环逻辑
     // 当前返回占位实现
     
