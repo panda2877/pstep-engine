@@ -57,20 +57,20 @@ jobs:
           echo "$SSH_KEY_B64" | base64 -d > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           echo 'Stopping engine...'
-          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key root@$SERVER_HOST 'systemctl stop pstep-engine || true'
+          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key agentuser@$SERVER_HOST 'sudo systemctl stop pstep-engine || true'
           echo 'Backing up...'
           TS=$(date +%Y%m%d_%H%M%S)
-          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key root@$SERVER_HOST "mkdir -p /opt/pstep/backups/$TS && [ -d /opt/pstep/engine ] && cp -r /opt/pstep/engine /opt/pstep/backups/$TS/ || echo 'No old version to backup'"
+          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key agentuser@$SERVER_HOST "sudo mkdir -p /opt/pstep/backups/$TS && sudo cp -r /opt/pstep/engine /opt/pstep/backups/$TS/ || echo 'No old version to backup'"
           echo 'Deploying engine...'
-          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key root@$SERVER_HOST 'rm -rf /opt/pstep/engine/dist/* /opt/pstep/engine/node_modules 2>/dev/null; mkdir -p /opt/pstep/engine'
-          tar cz -C . dist node_modules package.json | ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key root@$SERVER_HOST 'tar xz -C /opt/pstep/engine'
+          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key agentuser@$SERVER_HOST 'sudo rm -rf /opt/pstep/engine/dist/* /opt/pstep/engine/node_modules 2>/dev/null; sudo mkdir -p /opt/pstep/engine'
+          tar cz -C . dist node_modules package.json | ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key agentuser@$SERVER_HOST 'sudo tar xz -C /opt/pstep/engine'
           echo 'Starting engine...'
-          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key root@$SERVER_HOST 'systemctl enable pstep-engine 2>/dev/null; systemctl start pstep-engine'
+          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key agentuser@$SERVER_HOST 'sudo systemctl enable pstep-engine 2>/dev/null; sudo systemctl start pstep-engine'
           echo 'Health check...'
           sleep 3
-          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key root@$SERVER_HOST '
+          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key agentuser@$SERVER_HOST '
             echo "=== Engine Status ==="
-            systemctl is-active pstep-engine
+            sudo systemctl is-active pstep-engine
             echo "=== Health Check ==="
             curl -s http://localhost:4000/health
             echo ""
