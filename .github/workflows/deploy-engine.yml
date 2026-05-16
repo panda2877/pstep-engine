@@ -11,20 +11,20 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: '版本号 (如 0.1.1)'
+        description: "版本号 (如 0.1.1)"
         required: false
         type: string
   push:
     branches:
       - main
     paths:
-      - 'src/**'
-      - 'package.json'
-      - 'tsconfig.json'
-      - '.github/workflows/deploy-engine.yml'
+      - "src/**"
+      - "package.json"
+      - "tsconfig.json"
+      - ".github/workflows/deploy-engine.yml"
 
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   deploy:
@@ -53,27 +53,28 @@ jobs:
         run: |
           set -e
           mkdir -p ~/.ssh
-          ssh-keyscan -H $SERVER_HOST >> ~/.ssh/known_hosts 2>/dev/null || echo 'WARN: ssh-keyscan failed'
+          ssh-keyscan -H $SERVER_HOST >> ~/.ssh/known_hosts 2>/dev/null || echo "WARN: ssh-keyscan failed"
           echo "$SSH_KEY_B64" | base64 -d > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          echo 'Stopping engine...'
-          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key agentuser@$SERVER_HOST 'sudo systemctl stop pstep-engine || true'
-          echo 'Backing up...'
+          echo "Stopping engine..."
+          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key agentuser@$SERVER_HOST "sudo systemctl stop pstep-engine || true"
+          echo "Backing up..."
           TS=$(date +%Y%m%d_%H%M%S)
-          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key agentuser@$SERVER_HOST "sudo mkdir -p /opt/pstep/backups/$TS && sudo cp -r /opt/pstep/engine /opt/pstep/backups/$TS/ || echo 'No old version to backup'"
-          echo 'Deploying engine...'
-          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key agentuser@$SERVER_HOST 'sudo rm -rf /opt/pstep/engine/dist/* /opt/pstep/engine/node_modules 2>/dev/null; sudo mkdir -p /opt/pstep/engine'
-          tar cz -C . dist node_modules package.json | ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key agentuser@$SERVER_HOST 'sudo tar xz -C /opt/pstep/engine'
-          echo 'Starting engine...'
-          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key agentuser@$SERVER_HOST 'sudo systemctl enable pstep-engine 2>/dev/null; sudo systemctl start pstep-engine'
-          echo 'Health check...'
+          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key agentuser@$SERVER_HOST "sudo mkdir -p /opt/pstep/backups/$TS && sudo cp -r /opt/pstep/engine /opt/pstep/backups/$TS/ || echo \"No old version to backup\""
+          echo "Deploying engine..."
+          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key agentuser@$SERVER_HOST "sudo rm -rf /opt/pstep/engine/dist/* /opt/pstep/engine/node_modules 2>/dev/null; sudo mkdir -p /opt/pstep/engine"
+          tar cz -C . dist node_modules package.json | ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key agentuser@$SERVER_HOST "sudo tar xz -C /opt/pstep/engine"
+          echo "Rebuilding native modules for server Node version..."
+          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key agentuser@$SERVER_HOST "sudo mkdir -p /opt/pstep/engine/data && cd /opt/pstep/engine && npm rebuild"
+          echo "Starting engine..."
+          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key agentuser@$SERVER_HOST "sudo systemctl enable pstep-engine 2>/dev/null; sudo systemctl start pstep-engine"
+          echo "Health check..."
           sleep 3
-          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key agentuser@$SERVER_HOST '
-            echo "=== Engine Status ==="
+          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key agentuser@$SERVER_HOST "
+            echo \"=== Engine Status ===\"
             sudo systemctl is-active pstep-engine
-            echo "=== Health Check ==="
+            echo \"=== Health Check ===\"
             curl -s http://localhost:4000/health
-            echo ""
-          '
-          echo 'Engine deployment complete!'
-# CI 自动构建触发测试
+            echo \"\"
+          "
+          echo "Engine deployment complete!"
