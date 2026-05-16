@@ -4,18 +4,19 @@
  */
 
 import Database from "better-sqlite3";
+import type { Database as DatabaseType } from "better-sqlite3";
 import { dirname } from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DB_PATH = process.env.PSTEP_DB_PATH || `${__dirname}/../../data/pstep.db`;
 
-let dbInstance: Database | null = null;
+let dbInstance: DatabaseType | null = null;
 
 /**
  * 获取数据库实例
  */
-export function getDatabaseManager(): Database {
+export function getDatabaseManager(): DatabaseType {
   if (!dbInstance) {
     dbInstance = new Database(DB_PATH);
     // 启用 WAL 模式提升并发性能
@@ -29,7 +30,7 @@ export function getDatabaseManager(): Database {
 /**
  * 初始化数据库表结构
  */
-function initializeDatabase(db: Database): void {
+function initializeDatabase(db: DatabaseType): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS projects (
       id TEXT PRIMARY KEY,
