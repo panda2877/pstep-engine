@@ -9,6 +9,8 @@ on:
         description: '版本号 (如 1.0.0)'
         required: true
         type: string
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   build-and-deploy:
@@ -17,22 +19,22 @@ jobs:
 
     steps:
       - name: 🔨 Checkout pstep-engine
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: 🔨 Checkout pstep-gateway
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: panda2877/pstep-gateway
           path: pstep-gateway
 
       - name: 🔨 Checkout pstep-web
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: panda2877/pstep-web
           path: pstep-web
 
       - name: ⚙️ Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 20
 
