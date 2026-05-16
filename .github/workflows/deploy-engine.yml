@@ -51,7 +51,7 @@ jobs:
       - name: 🚀 Deploy to server
         env:
           SSH_KEY_B64: ${{ secrets.SERVER_SSH_KEY }}
-          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_HOST: ${{ vars.SERVER_HOST }}
         run: |
           echo '⚠️ Engine 部署尚未实现'
           echo '开发完成后，请在此处添加：'
