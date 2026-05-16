@@ -3,22 +3,21 @@
  * 提供 SQLite 数据库管理功能
  */
 
-import Database from "better-sqlite3";
-import type { Database as DatabaseType } from "better-sqlite3";
+import DatabaseConstructor from "better-sqlite3";
 import { dirname } from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DB_PATH = process.env.PSTEP_DB_PATH || `${__dirname}/../../data/pstep.db`;
 
-let dbInstance: DatabaseType | null = null;
+let dbInstance: InstanceType<typeof DatabaseConstructor> | null = null;
 
 /**
  * 获取数据库实例
  */
-export function getDatabaseManager(): DatabaseType {
+export function getDatabaseManager(): InstanceType<typeof DatabaseConstructor> {
   if (!dbInstance) {
-    dbInstance = new Database(DB_PATH);
+    dbInstance = new DatabaseConstructor(DB_PATH);
     // 启用 WAL 模式提升并发性能
     dbInstance.pragma("journal_mode = WAL");
     // 初始化数据库表
@@ -30,7 +29,7 @@ export function getDatabaseManager(): DatabaseType {
 /**
  * 初始化数据库表结构
  */
-function initializeDatabase(db: DatabaseType): void {
+function initializeDatabase(db: InstanceType<typeof DatabaseConstructor>): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS projects (
       id TEXT PRIMARY KEY,
