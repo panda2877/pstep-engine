@@ -8,7 +8,7 @@
 declare module '@earendil-works/pi-agent-core' {
   interface Message {
     type?: 'plan' | 'solve' | 'verify' | 'tool_call' | 'tool_result' | 'done';
-    steps?: import('../types/messages.js').PlanStep[];
+    steps?: import('./types/messages.js').PlanStep[];
     stepId?: string;
     stepNumber?: number;
     status?: 'pass' | 'fail' | 'needs_revision';

@@ -4,10 +4,11 @@
  */
 
 import fastify from 'fastify';
-import { sse } from 'fastify-sse-v2';
+import fastifySseV2 from 'fastify-sse-v2';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { cors } from '@fastify/cors';
+import cors from '@fastify/cors';
+import { SseEvent } from '../types/messages.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -36,7 +37,7 @@ export function createServer(options: EngineServerOptions = {}) {
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   });
 
-  server.register(sse);
+  server.register(fastifySseV2);
 
   // ========================================================================
   // 健康检查
@@ -68,19 +69,19 @@ export function createServer(options: EngineServerOptions = {}) {
   });
 
   // GET /api/projects/:id - 获取项目详情
-  server.get('/api/projects/:id', async (request, reply) => {
+  server.get<{ Params: { id: string } }>('/api/projects/:id', async (request, reply) => {
     // TODO: 实现项目详情
     return { id: request.params.id, status: 'not_found' };
   });
 
   // GET /api/projects/:id/rules - 获取项目规则
-  server.get('/api/projects/:id/rules', async (request, reply) => {
+  server.get<{ Params: { id: string } }>('/api/projects/:id/rules', async (request, reply) => {
     // TODO: 实现规则获取
     return { rules: [] };
   });
 
   // PUT /api/projects/:id/rules - 更新项目规则
-  server.put('/api/projects/:id/rules', async (request, reply) => {
+  server.put<{ Params: { id: string } }>('/api/projects/:id/rules', async (request, reply) => {
     // TODO: 实现规则更新
     return { status: 'updated' };
   });
@@ -103,13 +104,13 @@ export function createServer(options: EngineServerOptions = {}) {
   });
 
   // GET /api/sessions/:id - 获取会话详情
-  server.get('/api/sessions/:id', async (request, reply) => {
+  server.get<{ Params: { id: string } }>('/api/sessions/:id', async (request, reply) => {
     // TODO: 实现会话详情
     return { id: request.params.id, status: 'not_found' };
   });
 
   // DELETE /api/sessions/:id - 删除会话
-  server.delete('/api/sessions/:id', async (request, reply) => {
+  server.delete<{ Params: { id: string } }>('/api/sessions/:id', async (request, reply) => {
     // TODO: 实现会话删除
     return { status: 'deleted' };
   });
@@ -151,14 +152,15 @@ export function createServer(options: EngineServerOptions = {}) {
     }
 
     // 流式模式：SSE 响应
+    // fastify-sse-v2 v4: data must be a string (JSON.stringified)
     reply.sse({
       event: 'message',
-      data: {
+      data: JSON.stringify({
         type: 'plan',
         content: `正在分析任务：${message}`,
         steps: [],
         totalSteps: 0,
-      },
+      }),
     });
 
     // TODO: 实现完整的 Plan/Solve/Verify 循环
@@ -166,14 +168,14 @@ export function createServer(options: EngineServerOptions = {}) {
 
     reply.sse({
       event: 'done',
-      data: {
+      data: JSON.stringify({
         type: 'done',
         sessionId: sessionId || 'temp',
         messageCount: 1,
         totalSteps: 0,
         completedSteps: 0,
         summary: '框架已就绪，等待核心循环实现',
-      },
+      }),
     });
   });
 
