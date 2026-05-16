@@ -76,3 +76,4 @@ jobs:
             echo ""
           '
           echo 'Engine deployment complete!'
+# CI 自动构建触发测试
