@@ -25,3 +25,4 @@ export * from './types/index.js';
 export * from './db/index.js';
 export * from './server/index.js';
 export * from './agent/index.js';
+export * from './rules/index.js';

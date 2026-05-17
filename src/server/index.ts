@@ -5,10 +5,13 @@
 
 import fastify from 'fastify';
 import fastifySseV2 from 'fastify-sse-v2';
-import { join, dirname } from 'path';
+import { dirname } from 'path';
 import { fileURLToPath } from 'url';
 import cors from '@fastify/cors';
-import { SseEvent } from '../types/messages.js';
+import { RuleEngine } from '../rules/rule-engine.js';
+import { ProjectDao, SessionDao, MessageDao } from '../db/dao.js';
+import { createEngine } from '../engine/index.js';
+import type { PstepMessage } from '../types/messages.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -31,95 +34,82 @@ export function createServer(options: EngineServerOptions = {}) {
     },
   });
 
-  // 注册插件
+  const ruleEngine = new RuleEngine();
+
   server.register(cors, {
-    origin: '*', // 生产环境应限制为具体域名
+    origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   });
 
   server.register(fastifySseV2);
 
-  // ========================================================================
-  // 健康检查
-  // ========================================================================
-
   server.get('/health', async () => {
-    return {
-      status: 'ok',
-      version: '0.1.0',
-      timestamp: Date.now(),
-    };
+    return { status: 'ok', version: '0.1.0', timestamp: Date.now() };
   });
 
-  // ========================================================================
-  // 项目管理
-  // ========================================================================
+  // Project APIs
+  server.get('/api/projects', async () => ({ projects: ProjectDao.findAll() }));
 
-  // GET /api/projects - 获取所有项目
-  server.get('/api/projects', async (request, reply) => {
-    // TODO: 实现项目列表
-    return { projects: [] };
-  });
-
-  // POST /api/projects - 创建项目
-  server.post('/api/projects', async (request, reply) => {
+  server.post('/api/projects', async (request) => {
     const body = request.body as { name: string; description?: string };
-    // TODO: 实现项目创建
-    return { id: 'temp-id', name: body.name, status: 'created' };
+    const project = ProjectDao.create({ name: body.name, description: body.description });
+    return { id: project.id, name: project.name, status: 'created' };
   });
 
-  // GET /api/projects/:id - 获取项目详情
-  server.get<{ Params: { id: string } }>('/api/projects/:id', async (request, reply) => {
-    // TODO: 实现项目详情
-    return { id: request.params.id, status: 'not_found' };
+  server.get<{ Params: { id: string } }>('/api/projects/:id', async (request) => {
+    const project = ProjectDao.findById(request.params.id);
+    if (!project) return { id: request.params.id, status: 'not_found' };
+    return { ...project, status: 'ok' };
   });
 
-  // GET /api/projects/:id/rules - 获取项目规则
-  server.get<{ Params: { id: string } }>('/api/projects/:id/rules', async (request, reply) => {
-    // TODO: 实现规则获取
-    return { rules: [] };
+  server.get<{ Params: { id: string } }>('/api/projects/:id/rules', async (request) => {
+    const rules = await ruleEngine.getRules(request.params.id);
+    return { rules, count: rules.length };
   });
 
-  // PUT /api/projects/:id/rules - 更新项目规则
-  server.put<{ Params: { id: string } }>('/api/projects/:id/rules', async (request, reply) => {
-    // TODO: 实现规则更新
-    return { status: 'updated' };
+  server.put<{ Params: { id: string } }>('/api/projects/:id/rules', async (request) => {
+    const body = request.body as { category: string; content: string; priority?: number; ruleId?: string };
+    if (body.ruleId) {
+      const updated = await ruleEngine.updateRule(body.ruleId, body.content, body.priority);
+      if (!updated) return { status: 'not_found' };
+      return { status: 'updated', rule: updated };
+    }
+    const rule = await ruleEngine.createRule(request.params.id, body.category as any, body.content, body.priority);
+    return { status: 'created', rule };
   });
 
-  // ========================================================================
-  // 会话管理
-  // ========================================================================
-
-  // GET /api/sessions - 获取所有会话
-  server.get('/api/sessions', async (request, reply) => {
-    // TODO: 实现会话列表
-    return { sessions: [] };
-  });
-
-  // POST /api/sessions - 创建会话
-  server.post('/api/sessions', async (request, reply) => {
-    const body = request.body as { projectId: string; title?: string };
-    // TODO: 实现会话创建
-    return { id: 'temp-session-id', projectId: body.projectId, status: 'created' };
-  });
-
-  // GET /api/sessions/:id - 获取会话详情
-  server.get<{ Params: { id: string } }>('/api/sessions/:id', async (request, reply) => {
-    // TODO: 实现会话详情
-    return { id: request.params.id, status: 'not_found' };
-  });
-
-  // DELETE /api/sessions/:id - 删除会话
-  server.delete<{ Params: { id: string } }>('/api/sessions/:id', async (request, reply) => {
-    // TODO: 实现会话删除
+  server.delete<{ Params: { id: string } }>('/api/projects/:id/rules', async (request) => {
+    await ruleEngine.deleteRulesByProject(request.params.id);
     return { status: 'deleted' };
   });
 
-  // ========================================================================
-  // 主聊天接口（SSE 流式响应）
-  // ========================================================================
+  // Session APIs
+  server.get('/api/sessions', async (request) => {
+    const query = request.query as { projectId?: string };
+    if (query.projectId) return { sessions: SessionDao.findByProject(query.projectId) };
+    return { sessions: [] };
+  });
 
-  // POST /api/chat - 发起对话（SSE 流式响应）
+  server.post('/api/sessions', async (request) => {
+    const body = request.body as { projectId: string; title?: string };
+    const session = SessionDao.create({ projectId: body.projectId, title: body.title });
+    return { id: session.id, projectId: session.projectId, status: 'created' };
+  });
+
+  server.get<{ Params: { id: string } }>('/api/sessions/:id', async (request) => {
+    const session = SessionDao.findById(request.params.id);
+    if (!session) return { id: request.params.id, status: 'not_found' };
+    const messages = MessageDao.findBySession(request.params.id);
+    return { ...session, status: 'ok', messages };
+  });
+
+  server.delete<{ Params: { id: string } }>('/api/sessions/:id', async (request) => {
+    MessageDao.deleteBySession(request.params.id);
+    const deleted = SessionDao.delete(request.params.id);
+    return { status: deleted ? 'deleted' : 'not_found' };
+  });
+
+  // Chat API
   server.post('/api/chat', {
     schema: {
       body: {
@@ -134,54 +124,57 @@ export function createServer(options: EngineServerOptions = {}) {
       },
     },
   }, async (request, reply) => {
-    const { projectId, sessionId, message, stream = true } = request.body as {
-      projectId: string;
-      sessionId?: string;
-      message: string;
-      stream?: boolean;
-    };
+    const body = request.body as { projectId: string; sessionId?: string; message: string; stream?: boolean };
+    const { projectId, sessionId, message, stream = true } = body;
 
     if (!stream) {
-      // 非流式模式：等待完整响应
-      // TODO: 实现非流式响应
-      return {
-        type: 'done',
-        sessionId: sessionId || 'temp',
-        message: 'Non-streaming mode not yet implemented',
-      };
+      return { type: 'done', sessionId: sessionId || 'temp', message: 'Non-streaming mode not yet implemented' };
     }
 
-    // 流式模式：SSE 响应
-    // fastify-sse-v2 v4: data must be a string (JSON.stringified)
+    let actualSessionId = sessionId;
+    if (!actualSessionId) {
+      const session = SessionDao.create({ projectId, title: message.slice(0, 50) });
+      actualSessionId = session.id;
+    }
+
+    const basePrompt = `你是一位专业的 AI 编程助手，采用 Plan/Solve/Verify 范式工作：
+
+1. **Plan（规划）**：分析任务，拆解为结构化步骤
+2. **Solve（执行）**：逐步执行每个步骤，调用必要工具
+3. **Verify（验证）**：验证每一步的结果，确保质量
+
+请按此流程回答用户问题。`;
+
+    const fullSystemPrompt = await ruleEngine.mergeWithBasePrompt(basePrompt, projectId);
+
     reply.sse({
       event: 'message',
-      data: JSON.stringify({
-        type: 'plan',
-        content: `正在分析任务：${message}`,
-        steps: [],
-        totalSteps: 0,
-      }),
+      data: JSON.stringify({ type: 'plan', content: `正在分析任务：${message}`, steps: [], totalSteps: 0 }),
     });
 
-    // TODO: 实现完整的 Plan/Solve/Verify 循环
-    // 这里只是占位实现
+    const engine = createEngine({ gatewayUrl, systemPrompt: fullSystemPrompt });
 
-    reply.sse({
-      event: 'done',
-      data: JSON.stringify({
-        type: 'done',
-        sessionId: sessionId || 'temp',
-        messageCount: 1,
-        totalSteps: 0,
-        completedSteps: 0,
-        summary: '框架已就绪，等待核心循环实现',
-      }),
-    });
+    try {
+      await engine.initialize();
+      for await (const msg of engine.execute(message, projectId, actualSessionId)) {
+        const contentStr = typeof msg === 'object' && 'content' in msg ? String((msg as any).content ?? '') : '';
+        MessageDao.create({
+          sessionId: actualSessionId,
+          role: msg.role,
+          content: contentStr,
+          metadata: JSON.stringify({ type: (msg as any).type }),
+        });
+        reply.sse({ event: 'message', data: JSON.stringify(msg) });
+      }
+      reply.sse({
+        event: 'done',
+        data: JSON.stringify({ type: 'done', sessionId: actualSessionId, messageCount: 1, totalSteps: 0, completedSteps: 0, summary: '引擎已就绪，规则注入完成' }),
+      });
+    } catch (err) {
+      console.error('[Chat] Engine execution error:', err);
+      reply.sse({ event: 'error', data: JSON.stringify({ type: 'error', message: 'Engine execution failed' }) });
+    }
   });
-
-  // ========================================================================
-  // 启动服务器
-  // ========================================================================
 
   const start = async () => {
     try {
