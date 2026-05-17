@@ -15,6 +15,15 @@ export {
 } from './plan-solve-loop.js';
 
 export {
+  createSubAgentManager,
+  SubAgentManager,
+  type SubAgentManagerOptions,
+  type StepResult,
+  type DAGLayer,
+  type DAG,
+} from './sub-agent.js';
+
+export {
   convertToLlm,
   convertFromLlm,
 } from './message-converter.js';
