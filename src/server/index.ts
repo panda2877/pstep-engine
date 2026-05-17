@@ -141,7 +141,7 @@ export function createServer(options: EngineServerOptions = {}) {
           description: "Auto-created for session",
         });
       }
-      const session = SessionDao.create({ projectId, title: message.slice(0, 50) });
+      const session = SessionDao.create({ projectId: project.id, title: message.slice(0, 50) });
       actualSessionId = session.id;
     }
 

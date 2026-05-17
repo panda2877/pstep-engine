@@ -93,8 +93,22 @@ export class Orchestrator {
     const systemPrompt = this.buildSystemPrompt(projectId);
     const loop = createPlanSolveLoop(projectId, this.options.planSolveOptions);
 
+    const gatewayBaseUrl = this.options.gatewayUrl.endsWith("/v1") ? this.options.gatewayUrl : this.options.gatewayUrl + "/v1";
+    const modelConfig = {
+      id: "mimo-v2.5",
+      name: "Mimo v2.5",
+      api: "openai-completions",
+      provider: "openai",
+      baseUrl: gatewayBaseUrl,
+      reasoning: false,
+      input: ["text"],
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+      contextWindow: 128000,
+      maxTokens: 4096,
+    };
     const agentOptions: AgentOptions = {
       initialState: {
+        model: modelConfig as any,
         systemPrompt,
         messages: [],
       },
