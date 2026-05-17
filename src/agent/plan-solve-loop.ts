@@ -267,16 +267,24 @@ export class PlanSolveLoop {
     };
   }
 
-  private getMessageContent(msg: AgentMessage): string {
-    if (typeof msg.content === 'string') {
-      return msg.content;
+private getMessageContent(msg: AgentMessage): string {
+    if ("content" in msg) {
+      if (typeof msg.content === "string") {
+        return msg.content;
+      }
+      return (msg.content as Array<{ type: string; text?: string }>)
+        .filter((c): c is { type: "text"; text: string } => c.type === "text" && !!c.text)
+        .map((c) => c.text)
+        .join("\n");
     }
-    return msg.content
-      .filter((c): c is { type: 'text'; text: string } => c.type === 'text')
-      .map((c) => c.text)
-      .join('\n');
+    if ("command" in msg && "output" in msg) {
+      return "$ " + msg.command + "\n" + msg.output;
+    }
+    if ("summary" in msg) {
+      return msg.summary;
+    }
+    return "";
   }
-
   public reset(): void {
     this.phase = 'plan';
     this.steps = [];
