@@ -3,14 +3,14 @@
  * 基于 pi-agent-core 的声明合并扩展
  */
 
-import { Message as PiMessage } from '@earendil-works/pi-agent-core';
-import { Static, Type } from '@sinclair/typebox';
+import { Message as PiMessage } from "@earendil-works/pi-agent-core";
+import { Static, Type } from "@sinclair/typebox";
 
 // ============================================================================
 // 基础消息类型
 // ============================================================================
 
-export type Role = 'user' | 'assistant' | 'system' | 'tool';
+export type Role = "user" | "assistant" | "system" | "tool";
 
 export interface BaseMessage {
   id: string;
@@ -27,10 +27,10 @@ export const PlanStepSchema = Type.Object({
   title: Type.String(),
   description: Type.String(),
   status: Type.Enum({
-    pending: 'pending',
-    in_progress: 'in_progress',
-    completed: 'completed',
-    failed: 'failed',
+    pending: "pending",
+    in_progress: "in_progress",
+    completed: "completed",
+    failed: "failed",
   }),
   dependencies: Type.Array(Type.String(), { default: [] }),
   createdAt: Type.Number(),
@@ -40,14 +40,14 @@ export const PlanStepSchema = Type.Object({
 export type PlanStep = Static<typeof PlanStepSchema>;
 
 export const PlanMessageSchema = Type.Object({
-  type: Type.Literal('plan'),
+  type: Type.Literal("plan"),
   content: Type.String(),
   steps: Type.Array(PlanStepSchema),
   totalSteps: Type.Number(),
 });
 
 export interface PlanMessage extends BaseMessage {
-  type: 'plan';
+  type: "plan";
   content: string;
   steps: PlanStep[];
   totalSteps: number;
@@ -58,25 +58,32 @@ export interface PlanMessage extends BaseMessage {
 // ============================================================================
 
 export const SolveMessageSchema = Type.Object({
-  type: Type.Literal('solve'),
+  type: Type.Literal("solve"),
   content: Type.String(),
   stepId: Type.String(),
   stepNumber: Type.Number(),
-  toolCalls: Type.Array(Type.Object({
-    id: Type.String(),
-    name: Type.String(),
-    args: Type.Record(Type.String(), Type.Any()),
-  }), { default: [] }),
+  toolCalls: Type.Array(
+    Type.Object({
+      id: Type.String(),
+      name: Type.String(),
+      args: Type.Record(Type.String(), Type.Any()),
+    }),
+    { default: [] }
+  ),
   result: Type.Optional(Type.String()),
   isError: Type.Boolean({ default: false }),
 });
 
 export interface SolveMessage extends BaseMessage {
-  type: 'solve';
+  type: "solve";
   content: string;
   stepId: string;
   stepNumber: number;
-  toolCalls?: Array<{ id: string; name: string; args: Record<string, unknown> }>;
+  toolCalls?: Array<{
+    id: string;
+    name: string;
+    args: Record<string, unknown>;
+  }>;
   result?: string;
   isError?: boolean;
 }
@@ -86,13 +93,13 @@ export interface SolveMessage extends BaseMessage {
 // ============================================================================
 
 export const VerifyResultSchema = Type.Enum({
-  pass: 'pass',
-  fail: 'fail',
-  needs_revision: 'needs_revision',
+  pass: "pass",
+  fail: "fail",
+  needs_revision: "needs_revision",
 });
 
 export const VerifyMessageSchema = Type.Object({
-  type: Type.Literal('verify'),
+  type: Type.Literal("verify"),
   stepId: Type.String(),
   stepNumber: Type.Number(),
   status: VerifyResultSchema,
@@ -101,10 +108,10 @@ export const VerifyMessageSchema = Type.Object({
 });
 
 export interface VerifyMessage extends BaseMessage {
-  type: 'verify';
+  type: "verify";
   stepId: string;
   stepNumber: number;
-  status: 'pass' | 'fail' | 'needs_revision';
+  status: "pass" | "fail" | "needs_revision";
   feedback: string;
   suggestions: string[];
 }
@@ -114,7 +121,7 @@ export interface VerifyMessage extends BaseMessage {
 // ============================================================================
 
 export const ToolCallMessageSchema = Type.Object({
-  type: Type.Literal('tool_call'),
+  type: Type.Literal("tool_call"),
   toolCallId: Type.String(),
   toolName: Type.String(),
   args: Type.Record(Type.String(), Type.Any()),
@@ -122,7 +129,7 @@ export const ToolCallMessageSchema = Type.Object({
 });
 
 export interface ToolCallMessage extends BaseMessage {
-  type: 'tool_call';
+  type: "tool_call";
   toolCallId: string;
   toolName: string;
   args: Record<string, unknown>;
@@ -134,7 +141,7 @@ export interface ToolCallMessage extends BaseMessage {
 // ============================================================================
 
 export const ToolResultMessageSchema = Type.Object({
-  type: Type.Literal('tool_result'),
+  type: Type.Literal("tool_result"),
   toolCallId: Type.String(),
   result: Type.String(),
   isError: Type.Boolean(),
@@ -142,7 +149,7 @@ export const ToolResultMessageSchema = Type.Object({
 });
 
 export interface ToolResultMessage extends BaseMessage {
-  type: 'tool_result';
+  type: "tool_result";
   toolCallId: string;
   result: string;
   isError: boolean;
@@ -150,11 +157,25 @@ export interface ToolResultMessage extends BaseMessage {
 }
 
 // ============================================================================
+// StreamingMessage - LLM token 实时流式消息
+// ============================================================================
+
+export interface StreamingMessage extends BaseMessage {
+  type: "streaming";
+  content: string;
+  isToolCall?: boolean;
+  toolName?: string;
+  toolCallId?: string;
+  stepId?: string;
+  stepNumber?: number;
+}
+
+// ============================================================================
 // DoneMessage - 会话结束消息
 // ============================================================================
 
 export const DoneMessageSchema = Type.Object({
-  type: Type.Literal('done'),
+  type: Type.Literal("done"),
   sessionId: Type.String(),
   messageCount: Type.Number(),
   totalSteps: Type.Number(),
@@ -163,7 +184,7 @@ export const DoneMessageSchema = Type.Object({
 });
 
 export interface DoneMessage extends BaseMessage {
-  type: 'done';
+  type: "done";
   sessionId: string;
   messageCount: number;
   totalSteps: number;
@@ -181,22 +202,23 @@ export type PstepMessage =
   | VerifyMessage
   | ToolCallMessage
   | ToolResultMessage
+  | StreamingMessage
   | DoneMessage;
 
-export type PstepMessageType = PstepMessage['type'];
+export type PstepMessageType = PstepMessage["type"];
 
 // ============================================================================
 // SSE 事件包装
 // ============================================================================
 
 export interface SseEvent<T = PstepMessage> {
-  event: 'message' | 'done' | 'error';
+  event: "message" | "done" | "error";
   data: T;
   id?: string;
 }
 
 export function createSseEvent<T extends PstepMessage>(
-  type: 'message' | 'done' | 'error',
+  type: "message" | "done" | "error",
   data: T,
   id?: string
 ): SseEvent<T> {
@@ -207,7 +229,7 @@ export function createSseEvent<T extends PstepMessage>(
 // 阶段状态
 // ============================================================================
 
-export type Phase = 'plan' | 'solve' | 'verify' | 'completed';
+export type Phase = "plan" | "solve" | "verify" | "completed";
 
 export interface PhaseState {
   current: Phase;
