@@ -133,6 +133,14 @@ export function createServer(options: EngineServerOptions = {}) {
 
     let actualSessionId = sessionId;
     if (!actualSessionId) {
+      // 修复 FK 约束：先检查 project 是否存在，不存在则自动创建
+      let project = ProjectDao.findById(projectId);
+      if (!project) {
+        project = ProjectDao.create({
+          name: `Auto-project-${projectId.slice(0, 8)}`,
+          description: "Auto-created for session",
+        });
+      }
       const session = SessionDao.create({ projectId, title: message.slice(0, 50) });
       actualSessionId = session.id;
     }
