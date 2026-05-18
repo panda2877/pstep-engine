@@ -168,6 +168,7 @@ export interface StreamingMessage extends BaseMessage {
   toolCallId?: string;
   stepId?: string;
   stepNumber?: number;
+  isPartial?: boolean;
 }
 
 // ============================================================================
