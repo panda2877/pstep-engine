@@ -149,11 +149,20 @@ export class Orchestrator {
 
         case "message_update":
           // LLM token 更新，累积内容
-          const updateContent = (event.message as any).content;
-          if (updateContent && Array.isArray(updateContent)) {
-            for (const block of updateContent) {
-              if (block.type === "text") {
+          // event.message 是 pi-agent-core 的 partial AssistantMessage
+          // 其 content 数组格式: [{type: "text", text: ""}] 或 [{type: "thinking", thinking: ""}]
+          // MiMo 模型的推理内容存在 content[0].thinking（thinking_delta 累积）
+          // pi-agent-core v0.74.1 可能发送纯字符串（如 "我"、"AI"）而非数组
+          const rawContent = (event.message as any).content;
+          if (typeof rawContent === "string") {
+            currentStreamingContent += rawContent;
+          } else if (Array.isArray(rawContent)) {
+            for (const block of rawContent) {
+              if (block.type === "text" && block.text) {
                 currentStreamingContent += block.text;
+              } else if (block.type === "thinking" && block.thinking) {
+                // thinking 内容（如 MiMo 模型的 reasoning_content）也需要透传
+                currentStreamingContent += block.thinking;
               } else if (block.type === "toolCall") {
                 currentToolCallId = block.id;
                 currentToolName = block.name;
