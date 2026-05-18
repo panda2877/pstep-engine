@@ -148,26 +148,35 @@ export class Orchestrator {
           break;
 
         case "message_update":
-          // LLM token 更新，累积内容
-          // event.message 是 pi-agent-core 的 partial AssistantMessage
-          // 其 content 数组格式: [{type: "text", text: ""}] 或 [{type: "thinking", thinking: ""}]
-          // MiMo 模型的推理内容存在 content[0].thinking（thinking_delta 累积）
-          // pi-agent-core v0.74.1 可能发送纯字符串（如 "我"、"AI"）而非数组
+          // LLM token 实时推送
           const rawContent = (event.message as any).content;
+          let content = "";
           if (typeof rawContent === "string") {
-            currentStreamingContent += rawContent;
+            content = rawContent;
           } else if (Array.isArray(rawContent)) {
-            for (const block of rawContent) {
+            blockLoop: for (const block of rawContent) {
               if (block.type === "text" && block.text) {
-                currentStreamingContent += block.text;
+                content = block.text;
+                break blockLoop;
               } else if (block.type === "thinking" && block.thinking) {
-                // thinking 内容（如 MiMo 模型的 reasoning_content）也需要透传
-                currentStreamingContent += block.thinking;
+                content = block.thinking;
+                break blockLoop;
               } else if (block.type === "toolCall") {
                 currentToolCallId = block.id;
                 currentToolName = block.name;
               }
             }
+          }
+          if (content) {
+            queue.push({
+              id: crypto.randomUUID(),
+              role: "assistant",
+              createdAt: Date.now(),
+              type: "streaming",
+              content: content,
+              isToolCall: false,
+              isPartial: true,
+            });
           }
           break;
 
@@ -235,38 +244,44 @@ export class Orchestrator {
     });
 
     try {
-      // 启动 Agent 执行
-      await agent.prompt(userMessage);
-      await agent.waitForIdle();
-
-      // 循环结束后，输出完成消息
-      const state = loop.getPhaseState();
-      if (state.current === "completed") {
-        queue.push({
-          id: crypto.randomUUID(),
-          role: "assistant",
-          createdAt: Date.now(),
-          type: "done",
-          sessionId,
-          messageCount: agent.state.messages.length,
-          totalSteps: state.totalSteps,
-          completedSteps: state.stepIndex,
-          summary: "任务完成",
+      // 后台启动 Agent 执行（并发消费队列）
+      const agentPromise = agent.prompt(userMessage)
+        .then(() => agent.waitForIdle())
+        .then(() => {
+          // Agent 空闲后，检查是否完成
+          const state = loop.getPhaseState();
+          if (state.current === "completed") {
+            queue.push({
+              id: crypto.randomUUID(),
+              role: "assistant",
+              createdAt: Date.now(),
+              type: "done",
+              sessionId,
+              messageCount: agent.state.messages.length,
+              totalSteps: state.totalSteps,
+              completedSteps: state.stepIndex,
+              summary: "任务完成",
+            });
+          }
+        })
+        .finally(() => {
+          queue.close();
         });
+
+      // 并发消费队列 — 实时 yield streaming 消息
+      while (true) {
+        const msg = await queue.next();
+        if (msg === null) {
+          break;
+        }
+        yield msg;
       }
+
+      // 等待 Agent 完全结束
+      await agentPromise;
     } finally {
-      // 关闭队列，唤醒所有等待的消费者
       queue.close();
       unsubscribe();
-    }
-
-    // 从队列中消费消息，逐个 yield
-    while (true) {
-      const msg = await queue.next();
-      if (msg === null) {
-        break;
-      }
-      yield msg;
     }
   }
 

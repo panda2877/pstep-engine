@@ -107,7 +107,6 @@ export function createServer(options: EngineServerOptions = {}) {
   function rawSse(reply: any, event: string, data: string) {
     const payload = `event: ${event}\ndata: ${data}\n\n`;
     reply.raw.write(payload);
-    reply.raw.flush();
   }
 
   server.post('/api/chat', {
