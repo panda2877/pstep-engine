@@ -81,9 +81,9 @@ export class RuleEngine {
 
   private generateRulesXml(rules: ProjectRule[]): string {
     const sections: string[] = [];
-    const staticRules = rules.filter(r => RULE_CATEGORY_CONFIG[r.category as RuleCategory].section === 'static');
-    const dynamicRules = rules.filter(r => RULE_CATEGORY_CONFIG[r.category as RuleCategory].section === 'dynamic');
-    const memoryRules = rules.filter(r => RULE_CATEGORY_CONFIG[r.category as RuleCategory].section === 'memory');
+    const staticRules = rules.filter(r => RULE_CATEGORY_CONFIG[r.category as RuleCategory]?.section === 'static');
+    const dynamicRules = rules.filter(r => RULE_CATEGORY_CONFIG[r.category as RuleCategory]?.section === 'dynamic');
+    const memoryRules = rules.filter(r => RULE_CATEGORY_CONFIG[r.category as RuleCategory]?.section === 'memory');
     if (staticRules.length > 0) sections.push(`  <static-rules>${staticRules.map(r => this.formatRuleAsXml(r)).join(' ')}</static-rules>`);
     if (dynamicRules.length > 0) sections.push(`  <dynamic-rules>${dynamicRules.map(r => this.formatRuleAsXml(r)).join(' ')}</dynamic-rules>`);
     if (memoryRules.length > 0) sections.push(`  <memory>${memoryRules.map(r => this.formatRuleAsXml(r)).join(' ')}</memory>`);
@@ -95,9 +95,9 @@ export class RuleEngine {
     const limitedRules = rules.slice(0, this.options.maxRules);
     const rulesByCategory = this.groupRulesByCategory(limitedRules);
     const rulesXml = this.generateRulesXml(limitedRules);
-    const staticCount = limitedRules.filter(r => RULE_CATEGORY_CONFIG[r.category as RuleCategory].section === 'static').length;
-    const dynamicCount = limitedRules.filter(r => RULE_CATEGORY_CONFIG[r.category as RuleCategory].section === 'dynamic').length;
-    const memoryCount = limitedRules.filter(r => RULE_CATEGORY_CONFIG[r.category as RuleCategory].section === 'memory').length;
+    const staticCount = limitedRules.filter(r => RULE_CATEGORY_CONFIG[r.category as RuleCategory]?.section === 'static').length;
+    const dynamicCount = limitedRules.filter(r => RULE_CATEGORY_CONFIG[r.category as RuleCategory]?.section === 'dynamic').length;
+    const memoryCount = limitedRules.filter(r => RULE_CATEGORY_CONFIG[r.category as RuleCategory]?.section === 'memory').length;
     return {
       rulesXml,
       rulesByCategory,
