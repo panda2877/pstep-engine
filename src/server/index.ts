@@ -4,7 +4,6 @@
  */
 
 import fastify from 'fastify';
-import fastifySseV2 from 'fastify-sse-v2';
 import { dirname } from 'path';
 import { fileURLToPath } from 'url';
 import cors from '@fastify/cors';
@@ -41,13 +40,10 @@ export function createServer(options: EngineServerOptions = {}) {
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   });
 
-  server.register(fastifySseV2);
-
   server.get('/health', async () => {
     return { status: 'ok', version: '0.1.0', timestamp: Date.now() };
   });
 
-  // Project APIs
   server.get('/api/projects', async () => ({ projects: ProjectDao.findAll() }));
 
   server.post('/api/projects', async (request) => {
@@ -83,7 +79,6 @@ export function createServer(options: EngineServerOptions = {}) {
     return { status: 'deleted' };
   });
 
-  // Session APIs
   server.get('/api/sessions', async (request) => {
     const query = request.query as { projectId?: string };
     if (query.projectId) return { sessions: SessionDao.findByProject(query.projectId) };
@@ -109,7 +104,12 @@ export function createServer(options: EngineServerOptions = {}) {
     return { status: deleted ? 'deleted' : 'not_found' };
   });
 
-  // Chat API
+  function rawSse(reply: any, event: string, data: string) {
+    const payload = `event: ${event}\ndata: ${data}\n\n`;
+    reply.raw.write(payload);
+    reply.raw.flush();
+  }
+
   server.post('/api/chat', {
     schema: {
       body: {
@@ -133,7 +133,6 @@ export function createServer(options: EngineServerOptions = {}) {
 
     let actualSessionId = sessionId;
     if (!actualSessionId) {
-      // 修复 FK 约束：先检查 project 是否存在，不存在则自动创建
       let project = ProjectDao.findById(projectId);
       if (!project) {
         project = ProjectDao.create({
@@ -155,10 +154,16 @@ export function createServer(options: EngineServerOptions = {}) {
 
     const fullSystemPrompt = await ruleEngine.mergeWithBasePrompt(basePrompt, projectId);
 
-    reply.sse({
-      event: 'message',
-      data: JSON.stringify({ type: 'plan', content: `正在分析任务：${message}`, steps: [], totalSteps: 0 }),
+    reply.hijack();
+    reply.raw.writeHead(200, {
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Connection': 'keep-alive',
+      'Cache-Control': 'no-cache, no-transform',
+      'X-Accel-Buffering': 'no',
     });
+    reply.raw.write('retry: 3000\n\n');
+
+    rawSse(reply, 'message', JSON.stringify({ type: 'plan', content: `正在分析任务：${message}`, steps: [], totalSteps: 0 }));
 
     const engine = createEngine({ gatewayUrl, systemPrompt: fullSystemPrompt });
 
@@ -172,16 +177,15 @@ export function createServer(options: EngineServerOptions = {}) {
           content: contentStr,
           metadata: JSON.stringify({ type: (msg as any).type }),
         });
-        reply.sse({ event: 'message', data: JSON.stringify(msg) });
+        rawSse(reply, 'message', JSON.stringify(msg));
       }
-      reply.sse({
-        event: 'done',
-        data: JSON.stringify({ type: 'done', sessionId: actualSessionId, messageCount: 1, totalSteps: 0, completedSteps: 0, summary: '引擎已就绪，规则注入完成' }),
-      });
+      rawSse(reply, 'done', JSON.stringify({ type: 'done', sessionId: actualSessionId, messageCount: 1, totalSteps: 0, completedSteps: 0, summary: '引擎已就绪，规则注入完成' }));
     } catch (err) {
       console.error('[Chat] Engine execution error:', err);
-      reply.sse({ event: 'error', data: JSON.stringify({ type: 'error', message: 'Engine execution failed' }) });
+      rawSse(reply, 'error', JSON.stringify({ type: 'error', message: 'Engine execution failed' }));
     }
+
+    reply.raw.end();
   });
 
   const start = async () => {
