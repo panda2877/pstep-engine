@@ -13,6 +13,7 @@ import type { UserMessage } from '@earendil-works/pi-ai';
 import type { PlanStep, Phase, PhaseState, PlanMessage, VerifyMessage } from '../types/messages.js';
 import type { ProjectRule } from '../types/rules.js';
 import { SubAgentManager, type SubAgentManagerOptions, type StepResult } from './sub-agent.js';
+import { randomUUID } from 'crypto';
 
 // ============================================================================
 // 配置与类型
@@ -390,7 +391,7 @@ export class PlanSolveLoop {
 
   private createPlanFromSteps(): PlanMessage {
     return {
-      id: crypto.randomUUID(),
+      id: randomUUID(),
       role: 'assistant',
       createdAt: Date.now(),
       type: 'plan',
@@ -406,7 +407,7 @@ export class PlanSolveLoop {
 
     const status = this.verifyResults.get(currentStep.id) ?? 'pass';
     return {
-      id: crypto.randomUUID(),
+      id: randomUUID(),
       role: 'assistant',
       createdAt: Date.now(),
       type: 'verify',

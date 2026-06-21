@@ -6,6 +6,7 @@
 import { Agent, type AgentOptions, type AgentEvent } from "@earendil-works/pi-agent-core";
 import type { PstepMessage, StreamingMessage } from "../types/messages.js";
 import { createPlanSolveLoop, type PlanSolveLoopOptions } from "./plan-solve-loop.js";
+import { randomUUID } from "crypto";
 
 /**
  * 编排器配置
@@ -106,6 +107,7 @@ export class Orchestrator {
       contextWindow: 128000,
       maxTokens: 4096,
     };
+    const gatewayApiKey = process.env.GATEWAY_API_KEY;
     const agentOptions: AgentOptions = {
       initialState: {
         model: modelConfig as any,
@@ -113,6 +115,7 @@ export class Orchestrator {
         messages: [],
       },
       sessionId,
+      ...(gatewayApiKey ? { getApiKey: () => gatewayApiKey } : {}),
     };
 
     const agent = new Agent(agentOptions);
@@ -169,7 +172,7 @@ export class Orchestrator {
           }
           if (content) {
             queue.push({
-              id: crypto.randomUUID(),
+              id: randomUUID(),
               role: "assistant",
               createdAt: Date.now(),
               type: "streaming",
@@ -185,7 +188,7 @@ export class Orchestrator {
           if (currentStreamingContent || currentToolCallId) {
             queue.push(
               this.createStreamingMessage(
-                crypto.randomUUID(),
+                randomUUID(),
                 currentStreamingContent,
                 currentStreamingRole,
                 currentToolCallId || undefined,
@@ -201,7 +204,7 @@ export class Orchestrator {
         case "tool_execution_start":
           // 工具执行开始
           queue.push({
-            id: crypto.randomUUID(),
+            id: randomUUID(),
             role: "assistant",
             type: "streaming",
             content: `正在执行工具: ${event.toolName}`,
@@ -215,7 +218,7 @@ export class Orchestrator {
         case "tool_execution_end":
           // 工具执行结束
           queue.push({
-            id: crypto.randomUUID(),
+            id: randomUUID(),
             role: "assistant",
             type: "streaming",
             content: `工具执行完成: ${event.toolName}`,
@@ -232,6 +235,9 @@ export class Orchestrator {
           if (steeringMsg) {
             agent.steer(steeringMsg);
           }
+          break;
+
+        case "agent_end":
           break;
 
         // 其他事件类型暂不转发（可根据需要扩展）
@@ -252,7 +258,7 @@ export class Orchestrator {
           const state = loop.getPhaseState();
           if (state.current === "completed") {
             queue.push({
-              id: crypto.randomUUID(),
+              id: randomUUID(),
               role: "assistant",
               createdAt: Date.now(),
               type: "done",
