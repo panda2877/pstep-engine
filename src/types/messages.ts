@@ -3,7 +3,6 @@
  * 基于 pi-agent-core 的声明合并扩展
  */
 
-import { Message as PiMessage } from "@earendil-works/pi-agent-core";
 import { Static, Type } from "@sinclair/typebox";
 
 // ============================================================================

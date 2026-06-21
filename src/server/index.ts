@@ -40,6 +40,14 @@ export function createServer(options: EngineServerOptions = {}) {
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   });
 
+  const engine = createEngine({ gatewayUrl, systemPrompt: '' });
+  // Eagerly initialize the shared engine so channels (e.g. Feishu) can
+  // dispatch user messages without paying the cold-start cost per turn.
+  // Failures are non-fatal: HTTP /api/chat will retry on first request.
+  engine.initialize().catch((err) => {
+    console.error('[Server] engine.initialize() failed (will retry on first /api/chat):', err);
+  });
+
   server.get('/health', async () => {
     return { status: 'ok', version: '0.1.0', timestamp: Date.now() };
   });
@@ -164,9 +172,9 @@ export function createServer(options: EngineServerOptions = {}) {
 
     rawSse(reply, 'message', JSON.stringify({ type: 'plan', content: `正在分析任务：${message}`, steps: [], totalSteps: 0 }));
 
-    const engine = createEngine({ gatewayUrl, systemPrompt: fullSystemPrompt });
-
     try {
+      // engine is initialized at server boot; this is a defensive no-op in
+      // case the eager init failed earlier.
       await engine.initialize();
       for await (const msg of engine.execute(message, projectId, actualSessionId)) {
         const contentStr = typeof msg === 'object' && 'content' in msg ? String((msg as any).content ?? '') : '';
@@ -203,5 +211,5 @@ export function createServer(options: EngineServerOptions = {}) {
     console.log('[Server] pstep-engine stopped');
   };
 
-  return { server, start, stop, port, host };
+  return { server, start, stop, port, host, engine };
 }

@@ -1,28 +1,17 @@
 /**
- * pstep-engine 类型导出
+ * pstep-engine 应用入口
+ * 创建并启动 HTTP 服务器
  */
 
-declare module '@earendil-works/pi-agent-core' {
-  interface Message {
-    type?: 'plan' | 'solve' | 'verify' | 'tool_call' | 'tool_result' | 'done';
-    steps?: import('./types/messages.js').PlanStep[];
-    stepId?: string;
-    stepNumber?: number;
-    status?: 'pass' | 'fail' | 'needs_revision';
-    feedback?: string;
-    suggestions?: string[];
-    toolCallId?: string;
-    toolName?: string;
-    args?: Record<string, unknown>;
-    isError?: boolean;
-    totalSteps?: number;
-    completedSteps?: number;
-    summary?: string;
-  }
-}
+import { createServer } from "./server/index.js";
 
-export * from './types/index.js';
-export * from './db/index.js';
-export * from './server/index.js';
-export * from './agent/index.js';
-export * from './rules/index.js';
+const app = createServer();
+
+// 启动服务器
+app.start().catch((err) => {
+  console.error("Failed to start server:", err);
+  process.exit(1);
+});
+
+// 优雅关闭
+export { app };

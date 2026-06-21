@@ -1,80 +1,131 @@
 # ============================================================================
-# Pstep Engine --- 独立部署工作流
+# pstep-engine — 自动部署工作流
+#
 # 触发方式：
-#   1. 手动触发 (workflow_dispatch)
-#   2. push 到 main 分支时自动触发
+#   1. push 到 main 分支（src/package.json/tsconfig 变化）
+#   2. 手动触发 (workflow_dispatch)
+#
+# 设计：
+#   - build 在 runner 上完成（npm ci + tsc），产物 scp 到服务器
+#   - 服务器直接 npm install + npm run build + systemctl restart
+#   - 部署后 health check 验证
+#   - 不需要蓝绿（飞书 WSClient 出站连接，进程重启后自动重连）
 # ============================================================================
 
 name: 🚀 Deploy Engine
 
 on:
   workflow_dispatch:
-    inputs:
-      version:
-        description: "版本号 (如 0.1.1)"
-        required: false
-        type: string
   push:
     branches:
       - main
     paths:
-      - "src/**"
-      - "package.json"
-      - "tsconfig.json"
-      - ".github/workflows/deploy-engine.yml"
+      - 'src/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.json'
+      - '.github/workflows/deploy-engine.yml'
 
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  DEPLOY_HOST: 134.175.163.213
+  DEPLOY_USER: root
+  DEPLOY_DIR: /opt/pstep/engine
+  SERVICE_NAME: pstep-engine
 
 jobs:
-  deploy:
-    name: Build and Deploy Engine
+  build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
 
-      - name: Install dependencies
-        run: npm install
+      - name: Install & Build
+        run: |
+          npm ci --no-audit
+          npm run build
 
-      - name: Build
-        run: npm run build
+      - name: Verify build output
+        run: |
+          test -f dist/app.js || { echo "dist/app.js not found"; exit 1; }
+          echo "Build OK: $(ls dist/*.js | wc -l) JS files"
+
+      - name: Package (exclude node_modules + .git)
+        run: |
+          tar czf /tmp/pstep-engine.tar.gz \
+            --exclude='node_modules' \
+            --exclude='.git' \
+            -C . .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pstep-engine-dist
+          path: /tmp/pstep-engine.tar.gz
+          retention-days: 3
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: pstep-engine-dist
+          path: /tmp/
 
       - name: Deploy to server
+        uses: appleboy/ssh-action@v1
         env:
-          SSH_KEY_B64: ${{ secrets.SERVER_SSH_KEY }}
-          SERVER_HOST: ${{ vars.SERVER_HOST }}
-        run: |
-          set -e
-          mkdir -p ~/.ssh
-          ssh-keyscan -H $SERVER_HOST >> ~/.ssh/known_hosts 2>/dev/null || echo "WARN: ssh-keyscan failed"
-          echo "$SSH_KEY_B64" | base64 -d > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          echo "Stopping engine..."
-          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key agentuser@$SERVER_HOST "sudo systemctl stop pstep-engine || true"
-          echo "Backing up..."
-          TS=$(date +%Y%m%d_%H%M%S)
-          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key agentuser@$SERVER_HOST "sudo mkdir -p /opt/pstep/backups/$TS && sudo cp -r /opt/pstep/engine /opt/pstep/backups/$TS/ || echo \"No old version to backup\""
-          echo "Deploying engine..."
-          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key agentuser@$SERVER_HOST "sudo rm -rf /opt/pstep/engine/dist/* /opt/pstep/engine/node_modules 2>/dev/null; sudo mkdir -p /opt/pstep/engine"
-          tar cz -C . dist node_modules package.json | ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key agentuser@$SERVER_HOST "sudo tar xz -C /opt/pstep/engine"
-          echo "Rebuilding native modules for server Node version..."
-          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key agentuser@$SERVER_HOST "sudo mkdir -p /opt/pstep/engine/data && cd /opt/pstep/engine && sudo npm rebuild"
-          echo "Starting engine..."
-          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key agentuser@$SERVER_HOST "sudo systemctl enable pstep-engine 2>/dev/null; sudo systemctl start pstep-engine"
-          echo "Health check..."
-          sleep 3
-          ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/deploy_key agentuser@$SERVER_HOST "
-            echo \"=== Engine Status ===\"
-            sudo systemctl is-active pstep-engine
-            echo \"=== Health Check ===\"
-            curl -s http://localhost:4000/health
-            echo \"\"
-          "
-          echo "Engine deployment complete!"
+          SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+        with:
+          host: ${{ env.DEPLOY_HOST }}
+          username: ${{ env.DEPLOY_USER }}
+          key: ${{ env.SSH_KEY }}
+          envs: DEPLOY_DIR,SERVICE_NAME
+          script: |
+            set -euo pipefail
+
+            echo "=== [1/6] Stopping service ==="
+            systemctl stop ${SERVICE_NAME} 2>/dev/null || true
+
+            echo "=== [2/6] Extracting new code ==="
+            # 备份当前 dist（回滚用）
+            if [ -d "${DEPLOY_DIR}/dist" ]; then
+              cp -r ${DEPLOY_DIR}/dist /tmp/pstep-engine-dist-backup 2>/dev/null || true
+            fi
+            # 清理旧源码，解压新包（--strip-components=1 去掉顶层 pstep-engine/ 目录）
+            rm -rf ${DEPLOY_DIR}/src ${DEPLOY_DIR}/dist
+            tar xzf /tmp/pstep-engine.tar.gz --strip-components=1 -C ${DEPLOY_DIR}/
+
+            echo "=== [3/6] Installing dependencies ==="
+            cd ${DEPLOY_DIR}
+            # 全量安装（需要 tsc 做 build）
+            npm install --no-audit 2>&1 | tail -3
+
+            echo "=== [4/6] Building ==="
+            npm run build 2>&1 | tail -3
+
+            echo "=== [5/6] Starting service ==="
+            systemctl start ${SERVICE_NAME}
+
+            echo "=== [6/6] Health check ==="
+            sleep 3
+            if curl -sf -m 5 http://127.0.0.1:4000/health; then
+              echo ""
+              echo "=== ✅ Deploy successful ==="
+            else
+              echo "ERROR: Health check failed — rolling back"
+              # 回滚：用备份的 dist 重启
+              if [ -d "/tmp/pstep-engine-dist-backup" ]; then
+                rm -rf ${DEPLOY_DIR}/dist
+                mv /tmp/pstep-engine-dist-backup ${DEPLOY_DIR}/dist
+                systemctl start ${SERVICE_NAME}
+                echo "Rolled back to previous dist"
+              fi
+              journalctl -u ${SERVICE_NAME} -n 30 --no-pager
+              exit 1
+            fi
