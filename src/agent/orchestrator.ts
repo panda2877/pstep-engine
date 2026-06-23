@@ -157,6 +157,10 @@ export class Orchestrator {
     let currentToolCallId: string | null = null;
     let currentToolName: string | null = null;
 
+    // 收集本轮最终的 assistant 文本（用于历史持久化）
+    // 用 message_end 触发，保存的是 message 整体的最终内容（非流式快照）
+    const finalAssistantContents: string[] = [];
+
     // 订阅所有 AgentEvent 类型，不仅限于 turn_end
     const unsubscribe = agent.subscribe(async (event: AgentEvent) => {
       switch (event.type) {
@@ -211,7 +215,7 @@ export class Orchestrator {
           }
           break;
 
-        case "message_end":
+        case "message_end": {
           // 消息结束，输出最终的 streaming 消息
           if (currentStreamingContent || currentToolCallId) {
             queue.push(
@@ -224,10 +228,22 @@ export class Orchestrator {
               )
             );
           }
+          // 收集最终 assistant 文本（用于历史持久化）
+          const endMsg = (event as any).message;
+          if (endMsg && endMsg.role === "assistant") {
+            const blocks = endMsg.content;
+            if (Array.isArray(blocks)) {
+              const textBlock = blocks.find((b: any) => b.type === "text" && b.text);
+              if (textBlock) {
+                finalAssistantContents.push(textBlock.text);
+              }
+            }
+          }
           currentStreamingContent = "";
           currentToolCallId = null;
           currentToolName = null;
           break;
+        }
 
         case "tool_execution_start":
           // 工具执行开始
@@ -318,16 +334,11 @@ export class Orchestrator {
       if (this.options.saveMessages) {
         try {
           const toSave: HistoryEntry[] = [{ role: "user", content: userMessage }];
-          // 从 Agent 内部状态提取最终的 assistant 文本消息
-          for (const msg of agent.state.messages) {
-            if (msg.role === "assistant") {
-              const blocks = (msg as any).content;
-              if (Array.isArray(blocks)) {
-                const textBlock = blocks.find((b: any) => b.type === "text" && b.text);
-                if (textBlock) {
-                  toSave.push({ role: "assistant", content: textBlock.text });
-                }
-              }
+          // 只保存最终 assistant 文本（message_end 收集），不是流式快照
+          // 多轮对话的 PSV 循环可能产生多个 assistant 消息，保留全部
+          for (const content of finalAssistantContents) {
+            if (content && content.trim().length > 0) {
+              toSave.push({ role: "assistant", content });
             }
           }
           if (toSave.length > 1) {
