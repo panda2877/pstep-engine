@@ -97,9 +97,9 @@ jobs:
             if [ -d "${DEPLOY_DIR}/dist" ]; then
               cp -r ${DEPLOY_DIR}/dist /tmp/pstep-engine-dist-backup 2>/dev/null || true
             fi
-            # 清理旧源码，解压新包
+            # 清理旧源码，解压新包（--strip-components=1 去掉顶层 pstep-engine/ 目录）
             rm -rf ${DEPLOY_DIR}/src ${DEPLOY_DIR}/dist
-            tar xzf /tmp/pstep-engine.tar.gz -C ${DEPLOY_DIR}/
+            tar xzf /tmp/pstep-engine.tar.gz --strip-components=1 -C ${DEPLOY_DIR}/
 
             echo "=== [3/6] Installing dependencies ==="
             cd ${DEPLOY_DIR}
