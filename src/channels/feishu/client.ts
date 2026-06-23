@@ -106,17 +106,34 @@ export class FeishuClient {
 
     const dispatcher = new Lark.EventDispatcher({}).register({
       "im.message.receive_v1": (data: unknown) => {
-        // The SDK hands us the v2 envelope directly (schema 2.0 already unwrapped).
-        // The shape is { header, event: { sender, message } }.
-        const envelope = data as FeishuEventEnvelope;
-        const event = envelope?.event;
-        if (!event?.message) {
-          log(this.cfg, "dropped event with no message body:", JSON.stringify(envelope).slice(0, 200));
+        // SDK 1.67 EventDispatcher.parse() flattens schema-2.0 events.
+        // The flat shape is: { ...header, ...event: { message, sender }, schema }
+        // The SDK README confirms: `const { message: { chat_id } } = data;` works.
+        const d = data as any;
+        const message = d.message;
+        const sender = d.sender;
+        const header = d.header;
+        log(this.cfg, ">>> handler entered, top-level keys:", Object.keys(d).slice(0, 20));
+        if (!message) {
+          log(this.cfg, "dropped event with no message body:", JSON.stringify(d).slice(0, 200));
           return;
         }
+        log(
+          this.cfg,
+          "inbound message:",
+          message.message_id,
+          "type:", message.message_type,
+          "chat:", message.chat_id,
+          "chat_type:", message.chat_type,
+        );
+        // Build a normalized envelope for downstream code.
+        const envelope: FeishuEventEnvelope = {
+          schema: d.schema,
+          header,
+          event: { message, sender },
+        };
         try {
-          // Fire-and-forget; SDK awaits our return internally for ack timing.
-          const r = handler(event, envelope);
+          const r = handler(envelope.event, envelope);
           if (r && typeof (r as Promise<unknown>).then === "function") {
             r.catch((err) => {
               // eslint-disable-next-line no-console
