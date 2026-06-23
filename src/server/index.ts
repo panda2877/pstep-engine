@@ -11,6 +11,7 @@ import { RuleEngine } from '../rules/rule-engine.js';
 import { ProjectDao, SessionDao, MessageDao } from '../db/dao.js';
 import { createEngine } from '../engine/index.js';
 import type { PstepMessage } from '../types/messages.js';
+import type { HistoryEntry } from '../agent/orchestrator.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -18,6 +19,10 @@ export interface EngineServerOptions {
   port?: number;
   host?: string;
   gatewayUrl?: string;
+  /** 加载指定会话的历史消息 */
+  loadHistory?: (sessionId: string) => Promise<HistoryEntry[]>;
+  /** 保存本次执行产生的新消息 */
+  saveMessages?: (sessionId: string, entries: HistoryEntry[]) => Promise<void>;
 }
 
 export function createServer(options: EngineServerOptions = {}) {
@@ -40,7 +45,12 @@ export function createServer(options: EngineServerOptions = {}) {
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   });
 
-  const engine = createEngine({ gatewayUrl, systemPrompt: '' });
+  const engine = createEngine({
+    gatewayUrl,
+    systemPrompt: '',
+    loadHistory: options.loadHistory,
+    saveMessages: options.saveMessages,
+  });
   // Eagerly initialize the shared engine so channels (e.g. Feishu) can
   // dispatch user messages without paying the cold-start cost per turn.
   // Failures are non-fatal: HTTP /api/chat will retry on first request.

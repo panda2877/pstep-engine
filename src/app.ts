@@ -5,9 +5,22 @@
 
 import { createServer } from "./server/index.js";
 import { FeishuClient, MessageRouter, SessionMapper, type EngineAdapter } from "./channels/feishu/index.js";
+import { MessageDao } from "./db/dao.js";
 import type { PstepMessage } from "./types/messages.js";
 
-const app = createServer();
+const app = createServer({
+  loadHistory: async (sessionId: string) => {
+    const messages = MessageDao.findBySession(sessionId);
+    return messages
+      .filter((m) => m.role === "user" || m.role === "assistant")
+      .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+  },
+  saveMessages: async (sessionId: string, entries) => {
+    for (const entry of entries) {
+      MessageDao.create({ sessionId, role: entry.role, content: entry.content });
+    }
+  },
+});
 
 // ----------------------------------------------------------------------------
 // 飞书渠道 (env 守门：缺一即跳过)

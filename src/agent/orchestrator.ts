@@ -3,10 +3,18 @@
  * 接收 web 请求 -> 构建 Agent -> 流式返回（含 LLM token 实时透传）
  */
 
-import { Agent, type AgentOptions, type AgentEvent } from "@earendil-works/pi-agent-core";
+import { Agent, type AgentOptions, type AgentEvent, type AgentMessage } from "@earendil-works/pi-agent-core";
 import type { PstepMessage, StreamingMessage } from "../types/messages.js";
 import { createPlanSolveLoop, type PlanSolveLoopOptions } from "./plan-solve-loop.js";
 import { randomUUID } from "crypto";
+
+/**
+ * 历史消息条目（从持久化存储加载）
+ */
+export interface HistoryEntry {
+  role: "user" | "assistant";
+  content: string;
+}
 
 /**
  * 编排器配置
@@ -16,6 +24,10 @@ export interface OrchestratorOptions {
   model?: string;
   systemPrompt?: string;
   planSolveOptions?: PlanSolveLoopOptions;
+  /** 加载指定会话的历史消息（用于多轮上下文） */
+  loadHistory?: (sessionId: string) => Promise<HistoryEntry[]>;
+  /** 保存本次执行产生的新消息 */
+  saveMessages?: (sessionId: string, entries: HistoryEntry[]) => Promise<void>;
 }
 
 /**
@@ -108,11 +120,27 @@ export class Orchestrator {
       maxTokens: Number(process.env.LLM_MAX_TOKENS) || 4096,
     };
     const gatewayApiKey = process.env.GATEWAY_API_KEY;
+
+    // 加载历史消息（用于多轮上下文）
+    let historyMessages: AgentMessage[] = [];
+    if (this.options.loadHistory) {
+      try {
+        const entries = await this.options.loadHistory(sessionId);
+        historyMessages = entries.map((e) => ({
+          role: e.role as "user" | "assistant",
+          content: e.content,
+          timestamp: Date.now(),
+        })) as AgentMessage[];
+      } catch (err) {
+        console.error("[Orchestrator] failed to load history:", (err as Error).message);
+      }
+    }
+
     const agentOptions: AgentOptions = {
       initialState: {
         model: modelConfig as any,
         systemPrompt,
-        messages: [],
+        messages: historyMessages,
       },
       sessionId,
       ...(gatewayApiKey ? { getApiKey: () => gatewayApiKey } : {}),
@@ -285,6 +313,30 @@ export class Orchestrator {
 
       // 等待 Agent 完全结束
       await agentPromise;
+
+      // 保存本次对话消息（用于多轮上下文）
+      if (this.options.saveMessages) {
+        try {
+          const toSave: HistoryEntry[] = [{ role: "user", content: userMessage }];
+          // 从 Agent 内部状态提取最终的 assistant 文本消息
+          for (const msg of agent.state.messages) {
+            if (msg.role === "assistant") {
+              const blocks = (msg as any).content;
+              if (Array.isArray(blocks)) {
+                const textBlock = blocks.find((b: any) => b.type === "text" && b.text);
+                if (textBlock) {
+                  toSave.push({ role: "assistant", content: textBlock.text });
+                }
+              }
+            }
+          }
+          if (toSave.length > 1) {
+            await this.options.saveMessages(sessionId, toSave);
+          }
+        } catch (err) {
+          console.error("[Orchestrator] failed to save messages:", (err as Error).message);
+        }
+      }
     } finally {
       queue.close();
       unsubscribe();

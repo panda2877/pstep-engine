@@ -3,12 +3,10 @@
  * Phase 2: 完整的 Plan/Solve/Verify 循环
  */
 
-import { Agent, type AgentOptions, type AgentEvent } from '@earendil-works/pi-agent-core';
 import type { PstepMessage, Phase, PhaseState } from '../types/messages.js';
-import type { ProjectRule } from '../types/rules.js';
-import { createOrchestrator, type OrchestratorOptions } from '../agent/orchestrator.js';
-import { createPlanSolveLoop, type PlanSolveLoopOptions } from '../agent/plan-solve-loop.js';
-import { convertToLlm } from '../agent/message-converter.js';
+import { createOrchestrator } from '../agent/orchestrator.js';
+import type { HistoryEntry } from '../agent/orchestrator.js';
+import type { PlanSolveLoopOptions } from '../agent/plan-solve-loop.js';
 import { RuleEngine, type RuleEngineOptions } from '../rules/rule-engine.js';
 
 /**
@@ -20,6 +18,10 @@ export interface PstepEngineOptions {
   systemPrompt?: string;
   planSolveOptions?: PlanSolveLoopOptions;
   ruleEngineOptions?: RuleEngineOptions;
+  /** 加载指定会话的历史消息 */
+  loadHistory?: (sessionId: string) => Promise<HistoryEntry[]>;
+  /** 保存本次执行产生的新消息 */
+  saveMessages?: (sessionId: string, entries: HistoryEntry[]) => Promise<void>;
 }
 
 /**
@@ -49,6 +51,8 @@ export class PstepEngine {
       model: this.options.model,
       systemPrompt: this.options.systemPrompt,
       planSolveOptions: this.options.planSolveOptions,
+      loadHistory: this.options.loadHistory,
+      saveMessages: this.options.saveMessages,
     });
     console.log('[PstepEngine] Engine initialized with Phase 2 core loop');
   }
