@@ -77,6 +77,17 @@ jobs:
           name: pstep-engine-dist
           path: /tmp/
 
+      - name: Upload tar to server
+        uses: appleboy/scp-action@v0.1.7
+        env:
+          SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+        with:
+          host: ${{ env.DEPLOY_HOST }}
+          username: ${{ env.DEPLOY_USER }}
+          key: ${{ env.SSH_KEY }}
+          source: /tmp/pstep-engine.tar.gz
+          target: /tmp/
+
       - name: Deploy to server
         uses: appleboy/ssh-action@v1
         env:
@@ -99,6 +110,8 @@ jobs:
             fi
             # 清理旧源码，解压新包（--strip-components=1 去掉顶层 pstep-engine/ 目录）
             rm -rf ${DEPLOY_DIR}/src ${DEPLOY_DIR}/dist
+            # 清理之前手动部署留下的嵌套 pstep-engine 目录
+            rm -rf ${DEPLOY_DIR}/pstep-engine
             tar xzf /tmp/pstep-engine.tar.gz --strip-components=1 -C ${DEPLOY_DIR}/
 
             echo "=== [3/6] Installing dependencies ==="
