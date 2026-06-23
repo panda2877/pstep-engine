@@ -77,16 +77,17 @@ jobs:
           name: pstep-engine-dist
           path: /tmp/
 
-      - name: Upload tar to server
-        uses: appleboy/scp-action@v0.1.7
+      - name: Upload tarball to server via scp
         env:
           SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
-        with:
-          host: ${{ env.DEPLOY_HOST }}
-          username: ${{ env.DEPLOY_USER }}
-          key: ${{ env.SSH_KEY }}
-          source: /tmp/pstep-engine.tar.gz
-          target: /tmp/
+        run: |
+          # 用 ssh-keyscan 拿到主机 key，避免首次连接失败
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H $DEPLOY_HOST >> ~/.ssh/known_hosts 2>/dev/null
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            /tmp/pstep-engine.tar.gz root@${DEPLOY_HOST}:/tmp/pstep-engine.tar.gz
 
       - name: Deploy to server
         uses: appleboy/ssh-action@v1
@@ -97,6 +98,7 @@ jobs:
           username: ${{ env.DEPLOY_USER }}
           key: ${{ env.SSH_KEY }}
           envs: DEPLOY_DIR,SERVICE_NAME
+          command_timeout: 10m
           script: |
             set -euo pipefail
 
@@ -116,7 +118,6 @@ jobs:
 
             echo "=== [3/6] Installing dependencies ==="
             cd ${DEPLOY_DIR}
-            # 全量安装（需要 tsc 做 build）
             npm install --no-audit 2>&1 | tail -3
 
             echo "=== [4/6] Building ==="
@@ -132,7 +133,6 @@ jobs:
               echo "=== ✅ Deploy successful ==="
             else
               echo "ERROR: Health check failed — rolling back"
-              # 回滚：用备份的 dist 重启
               if [ -d "/tmp/pstep-engine-dist-backup" ]; then
                 rm -rf ${DEPLOY_DIR}/dist
                 mv /tmp/pstep-engine-dist-backup ${DEPLOY_DIR}/dist
