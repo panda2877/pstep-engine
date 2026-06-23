@@ -110,11 +110,6 @@ export class FeishuClient {
         const message = d.message;
         const sender = d.sender;
         const header = d.header;
-        log(this.cfg, "[receive_v1] keys:", Object.keys(d).slice(0, 20), "has msg:", !!message);
-        if (!message) {
-          log(this.cfg, "[receive_v1] dropped — no message body. data:", JSON.stringify(d).slice(0, 300));
-          return;
-        }
         log(this.cfg, "inbound:", message.message_id, "chat:", message.chat_id, "type:", message.message_type, "chat_type:", message.chat_type);
         const envelope: FeishuEventEnvelope = {
           schema: d.schema,
@@ -131,25 +126,6 @@ export class FeishuClient {
         }
       },
     });
-
-    // Wildcard dispatcher: catch every event type to see what actually arrives.
-    // Wraps the existing dispatcher to log all events with their type.
-    const originalInvoke = dispatcher.invoke.bind(dispatcher);
-    (dispatcher as any).invoke = async function (data: any, params: any) {
-      try {
-        // Read the event type from header (v2) or event.type (v1) without calling SDK internal parse
-        const type =
-          data?.header?.event_type ||
-          data?.event?.type ||
-          data?.type ||
-          "(unknown)";
-        log(cfg, "[dispatcher.invoke] type:", type, "raw keys:", Object.keys(data || {}).slice(0, 10));
-      } catch {}
-      return originalInvoke(data, params);
-    };
-
-    // Forward ref for logger inside the closure
-    var cfg = this.cfg;
 
     await this.ws.start({ eventDispatcher: dispatcher });
     log(this.cfg, "WSClient started; listening for im.message.receive_v1");
