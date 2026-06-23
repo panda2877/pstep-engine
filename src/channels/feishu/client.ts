@@ -106,27 +106,16 @@ export class FeishuClient {
 
     const dispatcher = new Lark.EventDispatcher({}).register({
       "im.message.receive_v1": (data: unknown) => {
-        // SDK 1.67 EventDispatcher.parse() flattens schema-2.0 events.
-        // The flat shape is: { ...header, ...event: { message, sender }, schema }
-        // The SDK README confirms: `const { message: { chat_id } } = data;` works.
         const d = data as any;
         const message = d.message;
         const sender = d.sender;
         const header = d.header;
-        log(this.cfg, ">>> handler entered, top-level keys:", Object.keys(d).slice(0, 20));
+        log(this.cfg, "[receive_v1] keys:", Object.keys(d).slice(0, 20), "has msg:", !!message);
         if (!message) {
-          log(this.cfg, "dropped event with no message body:", JSON.stringify(d).slice(0, 200));
+          log(this.cfg, "[receive_v1] dropped — no message body. data:", JSON.stringify(d).slice(0, 300));
           return;
         }
-        log(
-          this.cfg,
-          "inbound message:",
-          message.message_id,
-          "type:", message.message_type,
-          "chat:", message.chat_id,
-          "chat_type:", message.chat_type,
-        );
-        // Build a normalized envelope for downstream code.
+        log(this.cfg, "inbound:", message.message_id, "chat:", message.chat_id, "type:", message.message_type, "chat_type:", message.chat_type);
         const envelope: FeishuEventEnvelope = {
           schema: d.schema,
           header,
@@ -135,17 +124,32 @@ export class FeishuClient {
         try {
           const r = handler(envelope.event, envelope);
           if (r && typeof (r as Promise<unknown>).then === "function") {
-            r.catch((err) => {
-              // eslint-disable-next-line no-console
-              console.error("[feishu] handler error:", err);
-            });
+            r.catch((err) => console.error("[feishu] handler error:", err));
           }
         } catch (err) {
-          // eslint-disable-next-line no-console
-          console.error("[feishu] handler threw synchronously:", err);
+          console.error("[feishu] handler threw:", err);
         }
       },
     });
+
+    // Wildcard dispatcher: catch every event type to see what actually arrives.
+    // Wraps the existing dispatcher to log all events with their type.
+    const originalInvoke = dispatcher.invoke.bind(dispatcher);
+    (dispatcher as any).invoke = async function (data: any, params: any) {
+      try {
+        // Read the event type from header (v2) or event.type (v1) without calling SDK internal parse
+        const type =
+          data?.header?.event_type ||
+          data?.event?.type ||
+          data?.type ||
+          "(unknown)";
+        log(cfg, "[dispatcher.invoke] type:", type, "raw keys:", Object.keys(data || {}).slice(0, 10));
+      } catch {}
+      return originalInvoke(data, params);
+    };
+
+    // Forward ref for logger inside the closure
+    var cfg = this.cfg;
 
     await this.ws.start({ eventDispatcher: dispatcher });
     log(this.cfg, "WSClient started; listening for im.message.receive_v1");
