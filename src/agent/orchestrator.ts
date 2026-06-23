@@ -105,7 +105,7 @@ export class Orchestrator {
       input: ["text"],
       cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
       contextWindow: 128000,
-      maxTokens: 4096,
+      maxTokens: Number(process.env.LLM_MAX_TOKENS) || 4096,
     };
     const gatewayApiKey = process.env.GATEWAY_API_KEY;
     const agentOptions: AgentOptions = {

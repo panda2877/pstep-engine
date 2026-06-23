@@ -53,7 +53,7 @@ export class PlanSolveLoop {
     options: PlanSolveLoopOptions = {},
   ) {
     this.options = {
-      maxIterations: options.maxIterations ?? 10,
+      maxIterations: options.maxIterations ?? (Number(process.env.LLM_MAX_ITERATIONS) || 10),
       autoVerify: options.autoVerify ?? true,
       gatewayUrl: options.gatewayUrl ?? process.env.GATEWAY_URL ?? 'http://localhost:3001',
       subAgentOptions: options.subAgentOptions ?? {

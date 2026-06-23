@@ -221,7 +221,7 @@ export class CardStreamer {
         {
           const m = msg as ToolResultMessage;
           const icon = m.isError ? "⚠️" : "↩";
-          this.buf = `${this.buf}\n${icon} ${m.result.slice(0, 200)}`.slice(0, this.opts.cardMaxBytes * 2);
+          this.buf = `${this.buf}\n${icon} ${m.result}`.slice(0, this.opts.cardMaxBytes * 2);
         }
         break;
       case "plan":
