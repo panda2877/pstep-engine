@@ -19,10 +19,10 @@
   --shadow: rgba(0,0,0,0.4);
   --topbar-height: 56px;
   --fn-width: 52px;
-  /* AgentBar：与原型图一致，固定宽度 */
-  --agent-width: 220px;
-  /* HelperPanel：与原型图一致，使用百分比 */
-  --panel-width: 26%;
+  /* AgentBar：clamp(下限, 百分比, 上限) — 任何视口下都不挤占主区 */
+  --agent-width: clamp(160px, 12%, 180px);
+  /* HelperPanel：clamp 锁死上限，避免大屏膨胀 */
+  --panel-width: clamp(220px, 18%, 260px);
 }
 
 /* ===== Responsive Breakpoints ===== */
@@ -30,7 +30,7 @@
 @media (max-width: 1023px) {
   :root {
     --agent-width: 56px;
-    --panel-width: 30%;
+    --panel-width: clamp(200px, 25%, 260px);
   }
 }
 
