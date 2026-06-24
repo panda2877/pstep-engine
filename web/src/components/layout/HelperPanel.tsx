@@ -22,90 +22,24 @@ export function HelperPanel({ isOpen, onClose, isMobile = false }: HelperPanelPr
     memory: 'LanceDB Memory',
   };
 
-  if (isMobile) {
-    return (
-      <div
-        className="fixed inset-0 z-50 flex-col"
-        style={{
-          width: '100%',
-          background: 'var(--bg-secondary)',
-        }}
-      >
-        <PanelBody activeTab={activeTab} setActiveTab={setActiveTab} tabTitles={tabTitles} onClose={onClose} />
-      </div>
-    );
-  }
+  if (!isOpen && !isMobile) return null;
 
   return (
     <div
-      className="hidden md:flex flex-col flex-shrink-0 transition-all duration-300 ease-in-out"
+      className={`${
+        isMobile ? 'fixed inset-0 z-50' : 'hidden md:flex'
+      } flex-col transition-all duration-300`}
       style={{
-        width: isOpen ? 'clamp(280px, 28%, 400px)' : '28px',
-        minWidth: isOpen ? 'clamp(280px, 28%, 400px)' : '28px',
-        maxWidth: isOpen ? 'clamp(280px, 28%, 400px)' : '28px',
+        width: isMobile ? '100%' : 'var(--panel-width)',
+        minWidth: isMobile ? '100%' : 'var(--panel-width)',
+        maxWidth: isMobile ? '100%' : 'var(--panel-width)',
         background: 'var(--bg-secondary)',
-        borderLeft: '1px solid var(--border-card)',
-        overflow: 'hidden',
+        borderLeft: isMobile ? 'none' : '1px solid var(--border-card)',
       }}
     >
-      {isOpen ? (
-        <PanelBody activeTab={activeTab} setActiveTab={setActiveTab} tabTitles={tabTitles} onClose={onClose} />
-      ) : (
-        <CollapsedRail onExpand={onClose} />
-      )}
-    </div>
-  );
-}
-
-function CollapsedRail({ onExpand }: { onExpand: () => void }) {
-  return (
-    <button
-      onClick={onExpand}
-      title="展开辅助面板"
-      className="flex-1 flex flex-col items-center justify-center cursor-pointer"
-      style={{
-        background: 'transparent',
-        border: 'none',
-        color: 'var(--text-secondary)',
-        padding: 8,
-        gap: 8,
-      }}
-    >
-      <svg className="icon icon-sm" viewBox="0 0 24 24">
-        <rect x="3" y="3" width="18" height="18" rx="2" />
-        <line x1="15" y1="3" x2="15" y2="21" />
-        <polyline points="10 9 7 12 10 15" />
-      </svg>
-      <span
-        style={{
-          writingMode: 'vertical-rl',
-          textOrientation: 'mixed',
-          fontSize: 11,
-          letterSpacing: 2,
-        }}
-      >
-        Helper
-      </span>
-    </button>
-  );
-}
-
-function PanelBody({
-  activeTab,
-  setActiveTab,
-  tabTitles,
-  onClose,
-}: {
-  activeTab: TabType;
-  setActiveTab: (t: TabType) => void;
-  tabTitles: Record<TabType, string>;
-  onClose: () => void;
-}) {
-  return (
-    <>
       {/* Header */}
       <div
-        className="flex items-center justify-between px-3.5 py-2.5 flex-shrink-0"
+        className="flex items-center justify-between px-3.5 py-2.5"
         style={{ borderBottom: '1px solid var(--border-card)' }}
       >
         <span className="text-xs font-medium">{tabTitles[activeTab]}</span>
@@ -121,19 +55,17 @@ function PanelBody({
             cursor: 'pointer',
           }}
           onClick={onClose}
-          title="折叠辅助面板"
         >
           <svg className="icon icon-sm" viewBox="0 0 24 24">
-            <rect x="3" y="3" width="18" height="18" rx="2" />
-            <line x1="15" y1="3" x2="15" y2="21" />
-            <polyline points="14 9 17 12 14 15" />
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
           </svg>
         </button>
       </div>
 
       {/* Tabs */}
       <div
-        className="flex flex-shrink-0"
+        className="flex"
         style={{ borderBottom: '1px solid var(--border-card)' }}
       >
         {(['user', 'soul', 'memory'] as TabType[]).map((tab) => (
@@ -156,12 +88,12 @@ function PanelBody({
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-2.5 min-h-0">
+      <div className="flex-1 overflow-y-auto p-2.5">
         {activeTab === 'user' && <UserTab />}
         {activeTab === 'soul' && <SoulTab />}
         {activeTab === 'memory' && <MemoryTab />}
       </div>
-    </>
+    </div>
   );
 }
 
