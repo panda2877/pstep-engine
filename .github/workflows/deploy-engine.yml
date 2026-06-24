@@ -44,7 +44,7 @@ jobs:
           node-version: 20
           cache: 'npm'
 
-      - name: Install & Build
+      - name: Install & Build Engine
         run: |
           npm ci --no-audit
           npm run build
@@ -54,12 +54,18 @@ jobs:
           test -f dist/app.js || { echo "dist/app.js not found"; exit 1; }
           echo "Build OK: $(ls dist/*.js | wc -l) JS files"
 
+      - name: Install & Build Web UI
+        run: |
+          cd web
+          npm ci --no-audit
+          npm run build
+          echo "Web UI build OK: $(ls dist/assets/*.js | wc -l) JS files"
+
       - name: Package (exclude node_modules + .git)
         run: |
           tar czf /tmp/pstep-engine.tar.gz \
             --exclude='node_modules' \
             --exclude='web/node_modules' \
-            --exclude='web/dist' \
             --exclude='.git' \
             -C . .
 
@@ -125,12 +131,6 @@ jobs:
 
             echo "=== [4/6] Building ==="
             npm run build 2>&1 | tail -3
-
-            echo "=== [4b/6] Building Web UI ==="
-            cd ${DEPLOY_DIR}/web
-            npm install --no-audit 2>&1 | tail -3
-            npm run build 2>&1 | tail -3
-            cd ${DEPLOY_DIR}
 
             echo "=== [5/6] Starting service ==="
             systemctl start ${SERVICE_NAME}
