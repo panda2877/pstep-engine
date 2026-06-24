@@ -15,7 +15,7 @@ export function AppLayout() {
   const [activeView, setActiveView] = useState<'chat' | 'setting'>('chat');
   const [selectedAgent, setSelectedAgent] = useState<string>('紫灵');
   const [selectedSession, setSelectedSession] = useState<string>('当前会话');
-  const [helperOpen, setHelperOpen] = useState(true);
+  const [helperOpen, setHelperOpen] = useState(false);
   const [mobileView, setMobileView] = useState<'agents' | 'chat' | 'helper'>('chat');
 
   return (
@@ -51,7 +51,7 @@ export function AppLayout() {
         {/* Message Area - 桌面端或移动端 chat 视图 */}
         <div className={`${
           mobileView === 'chat' ? 'flex' : 'hidden'
-        } md:flex flex-1`}>
+        } md:flex flex-1 min-w-0`}>
           <MessageArea
             selectedAgent={selectedAgent}
             selectedSession={selectedSession}
