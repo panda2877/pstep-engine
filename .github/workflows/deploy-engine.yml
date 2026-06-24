@@ -21,6 +21,7 @@ on:
       - main
     paths:
       - 'src/**'
+      - 'web/**'
       - 'package.json'
       - 'package-lock.json'
       - 'tsconfig.json'
@@ -57,6 +58,8 @@ jobs:
         run: |
           tar czf /tmp/pstep-engine.tar.gz \
             --exclude='node_modules' \
+            --exclude='web/node_modules' \
+            --exclude='web/dist' \
             --exclude='.git' \
             -C . .
 
@@ -123,12 +126,18 @@ jobs:
             echo "=== [4/6] Building ==="
             npm run build 2>&1 | tail -3
 
+            echo "=== [4b/6] Building Web UI ==="
+            cd ${DEPLOY_DIR}/web
+            npm install --no-audit 2>&1 | tail -3
+            npm run build 2>&1 | tail -3
+            cd ${DEPLOY_DIR}
+
             echo "=== [5/6] Starting service ==="
             systemctl start ${SERVICE_NAME}
 
             echo "=== [6/6] Health check ==="
             sleep 3
-            if curl -sf -m 5 http://127.0.0.1:4000/health; then
+            if curl -sf -m 5 http://127.0.0.1:3005/health; then
               echo ""
               echo "=== ✅ Deploy successful ==="
             else

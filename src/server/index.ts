@@ -4,9 +4,11 @@
  */
 
 import fastify from 'fastify';
-import { dirname } from 'path';
+import { dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
+import { existsSync } from 'fs';
 import cors from '@fastify/cors';
+import fastifyStatic from '@fastify/static';
 import { RuleEngine } from '../rules/rule-engine.js';
 import { ProjectDao, SessionDao, MessageDao } from '../db/dao.js';
 import { createEngine } from '../engine/index.js';
@@ -27,7 +29,7 @@ export interface EngineServerOptions {
 
 export function createServer(options: EngineServerOptions = {}) {
   const {
-    port = 4000,
+    port = parseInt(process.env.PORT || '3005', 10),
     host = '0.0.0.0',
     gatewayUrl = process.env.GATEWAY_URL || 'http://localhost:3001',
   } = options;
@@ -44,6 +46,17 @@ export function createServer(options: EngineServerOptions = {}) {
     origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   });
+
+  // 生产模式下托管前端静态文件
+  const webDistPath = resolve(__dirname, '../../web/dist');
+  const serveWebUI = existsSync(webDistPath);
+  if (serveWebUI) {
+    server.register(fastifyStatic, {
+      root: webDistPath,
+      prefix: '/',
+    });
+    console.log(`[Server] Serving web UI from ${webDistPath}`);
+  }
 
   const engine = createEngine({
     gatewayUrl,
@@ -205,11 +218,25 @@ export function createServer(options: EngineServerOptions = {}) {
     reply.raw.end();
   });
 
+  // SPA fallback: 非 API 路由都返回 index.html
+  if (serveWebUI) {
+    server.setNotFoundHandler((request, reply) => {
+      if (request.url.startsWith('/api/') || request.url === '/health') {
+        reply.code(404).send({ status: 'not_found' });
+        return;
+      }
+      reply.type('text/html').sendFile('index.html');
+    });
+  }
+
   const start = async () => {
     try {
       await server.listen({ port, host });
       console.log(`[Server] pstep-engine started on http://${host}:${port}`);
       console.log(`[Server] Gateway URL: ${gatewayUrl}`);
+      if (serveWebUI) {
+        console.log(`[Server] Web UI available at http://${host}:${port}`);
+      }
     } catch (err) {
       server.log.error(err);
       process.exit(1);

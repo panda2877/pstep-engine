@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+/* ===== Design Tokens (墨绿深色主题) ===== */
+:root {
+  --bg-primary: #0B1C19;
+  --bg-secondary: #0D211D;
+  --bg-card: #122622;
+  --border-card: #1E3A32;
+  --text-primary: #E8E6D9;
+  --text-secondary: #6B7D78;
+  --accent-gold: #D4A853;
+  --accent-green: #22C55E;
+  --accent-purple: #7C3AED;
+
+  --radius-card: 8px;
+  --radius-btn: 6px;
+  --radius-input: 8px;
+
+  --shadow: rgba(0,0,0,0.4);
+  --topbar-height: 56px;
+  --fn-width: 52px;
+  --agent-width: 220px;
+  --panel-width: 26%;
+}
+
+/* ===== Base Styles ===== */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+/* ===== Scrollbar ===== */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-card); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+
+/* ===== SVG Icon Base ===== */
+.icon {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.icon-sm { width: 14px; height: 14px; }
+.icon-lg { width: 20px; height: 20px; }
+
+/* ===== Tooltip ===== */
+.tooltip { position: relative; }
+.tooltip::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: -28px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 10px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  z-index: 100;
+  border: 1px solid var(--border-card);
+}
+.tooltip:hover::after { opacity: 1; }
