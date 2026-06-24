@@ -111,21 +111,21 @@ export function AgentBar({
     >
       {/* Header */}
       <div
-        className="flex items-center justify-between px-3.5 py-2.5"
+        className="flex items-center justify-between px-2.5 py-2"
         style={{
           borderBottom: '1px solid var(--border-card)',
-          fontSize: 10,
+          fontSize: 9,
           color: 'var(--text-secondary)',
           textTransform: 'uppercase',
-          letterSpacing: 0.5,
+          letterSpacing: 0.6,
         }}
       >
-        <span>Agent</span>
+        <span>agents</span>
         <button
           className="flex items-center justify-center hover:opacity-80"
           style={{
-            width: 22,
-            height: 22,
+            width: 20,
+            height: 20,
             borderRadius: 4,
             border: 'none',
             background: 'transparent',
@@ -134,7 +134,7 @@ export function AgentBar({
           }}
           title="新建 Agent"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 13, height: 13 }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 12, height: 12 }}>
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
@@ -147,7 +147,7 @@ export function AgentBar({
           <div key={agent.id} className="mb-0.5">
             {/* Agent Item */}
             <div
-              className="flex items-center gap-2 py-2 px-2 rounded-lg cursor-pointer transition-all duration-200"
+              className="flex items-center gap-1.5 py-1.5 px-1.5 rounded-lg cursor-pointer transition-all duration-200"
               style={{
                 background: selectedAgent === agent.name ? 'var(--bg-card)' : 'transparent',
                 borderLeft: selectedAgent === agent.name ? '2px solid var(--accent-gold)' : '2px solid transparent',
@@ -201,23 +201,25 @@ export function AgentBar({
                 {agent.sessions.map((session) => (
                   <div
                     key={session.id}
-                    className="flex items-center gap-1.5 py-1.5 px-1.5 rounded cursor-pointer transition-all duration-150 text-[11px]"
+                    className="flex flex-col gap-0 py-1 px-1.5 rounded cursor-pointer transition-all duration-150 text-[11px]"
                     style={{
                       color: selectedSession === session.name ? 'var(--accent-gold)' : 'var(--text-secondary)',
                       background: selectedSession === session.name ? 'rgba(212, 168, 83, 0.12)' : 'transparent',
                     }}
                     onClick={(e) => handleSessionClick(e, agent, session)}
                   >
-                    <div
-                      className="w-1 h-1 rounded-full flex-shrink-0"
-                      style={{
-                        background: selectedSession === session.name ? 'var(--accent-gold)' : 'currentColor',
-                        opacity: selectedSession === session.name ? 1 : 0.6,
-                      }}
-                    />
-                    <span className="flex-1 truncate">{session.name}</span>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <div
+                        className="w-1 h-1 rounded-full flex-shrink-0"
+                        style={{
+                          background: selectedSession === session.name ? 'var(--accent-gold)' : 'currentColor',
+                          opacity: selectedSession === session.name ? 1 : 0.6,
+                        }}
+                      />
+                      <span className="truncate">{session.name}</span>
+                    </div>
                     <span
-                      className="text-[9px] flex-shrink-0 opacity-70"
+                      className="text-[9px] pl-3.5 opacity-70"
                       style={{
                         color: selectedSession === session.name ? 'var(--accent-gold)' : 'var(--text-secondary)',
                       }}

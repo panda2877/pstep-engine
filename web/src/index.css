@@ -22,7 +22,7 @@
   /* AgentBar：clamp(下限, 百分比, 上限) — 任何视口下都不挤占主区 */
   --agent-width: clamp(180px, 14%, 200px);
   /* HelperPanel：clamp 锁死上限，避免大屏膨胀 */
-  --panel-width: clamp(260px, 22%, 320px);
+  --panel-width: clamp(240px, 22%, 280px);
 }
 
 /* ===== Responsive Breakpoints ===== */
@@ -30,7 +30,7 @@
 @media (max-width: 1023px) {
   :root {
     --agent-width: 56px;
-    --panel-width: clamp(240px, 30%, 320px);
+    --panel-width: clamp(220px, 30%, 280px);
   }
 }
 
