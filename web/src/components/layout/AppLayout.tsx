@@ -29,7 +29,7 @@ export function AppLayout() {
       {/* Main Layout */}
       <div className="flex flex-1 overflow-hidden">
         {/* Fn Bar - 桌面端显示 */}
-        <div className="hidden md:block">
+        <div className="hidden md:block flex-shrink-0">
           <FnBar
             activeView={activeView}
             onViewChange={setActiveView}
@@ -39,7 +39,7 @@ export function AppLayout() {
         {/* Agent Bar - 桌面端或移动端 agents 视图 */}
         <div className={`${
           mobileView === 'agents' ? 'flex' : 'hidden'
-        } md:flex`}>
+        } md:flex flex-shrink-0`}>
           <AgentBar
             selectedAgent={selectedAgent}
             selectedSession={selectedSession}
@@ -51,7 +51,7 @@ export function AppLayout() {
         {/* Message Area - 桌面端或移动端 chat 视图 */}
         <div className={`${
           mobileView === 'chat' ? 'flex' : 'hidden'
-        } md:flex flex-1`}>
+        } md:flex flex-1 min-w-0`}>
           <MessageArea
             selectedAgent={selectedAgent}
             selectedSession={selectedSession}

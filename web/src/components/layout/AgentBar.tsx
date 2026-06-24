@@ -100,12 +100,13 @@ export function AgentBar({
 
   return (
     <div
-      className="flex flex-col"
+      className="hidden md:flex flex-col flex-shrink-0"
       style={{
         width: 'var(--agent-width)',
         minWidth: 'var(--agent-width)',
         background: 'var(--bg-secondary)',
         borderRight: '1px solid var(--border-card)',
+        overflow: 'hidden',
       }}
     >
       {/* Header */}
@@ -191,16 +192,16 @@ export function AgentBar({
               </span>
             </div>
 
-            {/* Sessions */}
+            {/* Sessions — 窄屏图标模式下隐藏，session 列表改在 modal/drawer 中呈现 */}
             {expandedAgent === agent.name && (
               <div
-                className="py-1 pl-5 ml-3"
+                className="hidden lg:block py-1 pl-3 ml-1"
                 style={{ borderLeft: '1px dashed var(--border-card)' }}
               >
                 {agent.sessions.map((session) => (
                   <div
                     key={session.id}
-                    className="flex items-center gap-1.5 py-1.5 px-2 rounded cursor-pointer transition-all duration-150 text-[11px]"
+                    className="flex items-center gap-1.5 py-1.5 px-1.5 rounded cursor-pointer transition-all duration-150 text-[11px]"
                     style={{
                       color: selectedSession === session.name ? 'var(--accent-gold)' : 'var(--text-secondary)',
                       background: selectedSession === session.name ? 'rgba(212, 168, 83, 0.12)' : 'transparent',

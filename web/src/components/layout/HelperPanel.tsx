@@ -28,7 +28,7 @@ export function HelperPanel({ isOpen, onClose, isMobile = false }: HelperPanelPr
     <div
       className={`${
         isMobile ? 'fixed inset-0 z-50' : 'hidden md:flex'
-      } flex-col transition-all duration-300`}
+      } flex-col flex-shrink-0 transition-all duration-300`}
       style={{
         width: isMobile ? '100%' : 'var(--panel-width)',
         minWidth: isMobile ? '100%' : 'var(--panel-width)',

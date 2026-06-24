@@ -175,7 +175,7 @@ export function MessageArea({
       </div>
 
       {/* Message List */}
-      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+      <div className="flex-1 overflow-y-auto px-3 py-4 flex flex-col gap-3">
         {/* Date Separator */}
         <div
           className="text-center text-[10px] py-2 relative"
@@ -202,7 +202,7 @@ export function MessageArea({
         {messages.map((msg) => (
           <div
             key={msg.id}
-            className={`flex gap-2.5 max-w-[75%] ${
+            className={`flex gap-2.5 max-w-[88%] ${
               msg.role === 'user' ? 'self-end flex-row-reverse' : 'self-start'
             }`}
           >

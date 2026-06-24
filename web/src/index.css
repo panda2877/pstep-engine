@@ -19,8 +19,19 @@
   --shadow: rgba(0,0,0,0.4);
   --topbar-height: 56px;
   --fn-width: 52px;
-  --agent-width: 220px;
-  --panel-width: 26%;
+  /* AgentBar：clamp(下限, 百分比, 上限) — 任何视口下都不挤占主区 */
+  --agent-width: clamp(180px, 14%, 200px);
+  /* HelperPanel：clamp 锁死上限，避免大屏膨胀 */
+  --panel-width: clamp(260px, 22%, 320px);
+}
+
+/* ===== Responsive Breakpoints ===== */
+/* 窄屏（<1024px）：AgentBar 收成图标条，session 列表可点开抽屉 */
+@media (max-width: 1023px) {
+  :root {
+    --agent-width: 56px;
+    --panel-width: clamp(240px, 30%, 320px);
+  }
 }
 
 /* ===== Base Styles ===== */
