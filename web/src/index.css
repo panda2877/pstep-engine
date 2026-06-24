@@ -5,20 +5,27 @@
   --bg-primary: #0B1C19;
   --bg-secondary: #0D211D;
   --bg-card: #122622;
+  --bg-hover: #162E28;
+  --bg-active: #1A3630;
+  --border-main: #1E3A32;
   --border-card: #1E3A32;
   --text-primary: #E8E6D9;
   --text-secondary: #6B7D78;
+  --text-muted: #4A5D57;
   --accent-gold: #D4A853;
   --accent-green: #22C55E;
   --accent-purple: #7C3AED;
 
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
   --radius-card: 8px;
   --radius-btn: 6px;
   --radius-input: 8px;
 
   --shadow: rgba(0,0,0,0.4);
-  --topbar-height: 56px;
-  --fn-width: 52px;
+  --topbar-height: 48px;
+  --fn-width: 48px;
   /* AgentBar：clamp(下限, 百分比, 上限) — 任何视口下都不挤占主区 */
   --agent-width: clamp(160px, 12%, 180px);
   /* HelperPanel：clamp 锁死上限，避免大屏膨胀 */
@@ -54,9 +61,9 @@ body {
 }
 
 /* ===== Scrollbar ===== */
-::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border-card); border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: var(--border-main); border-radius: 2px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
 
 /* ===== SVG Icon Base ===== */

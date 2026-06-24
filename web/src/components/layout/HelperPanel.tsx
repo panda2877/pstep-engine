@@ -33,16 +33,19 @@ export function HelperPanel({ isOpen, onClose, isMobile = false }: HelperPanelPr
         width: isMobile ? '100%' : 'var(--panel-width)',
         minWidth: isMobile ? '100%' : 'var(--panel-width)',
         maxWidth: isMobile ? '100%' : 'var(--panel-width)',
-        background: 'var(--bg-secondary)',
-        borderLeft: isMobile ? 'none' : '1px solid var(--border-card)',
+        background: 'var(--bg-primary)',
+        borderLeft: isMobile ? 'none' : '1px solid var(--border-main)',
       }}
     >
       {/* Header */}
       <div
-        className="flex items-center justify-between px-3.5 py-2.5"
-        style={{ borderBottom: '1px solid var(--border-card)' }}
+        className="flex items-center justify-between px-4"
+        style={{
+          height: 48,
+          borderBottom: '1px solid var(--border-main)',
+        }}
       >
-        <span className="text-xs font-medium">{tabTitles[activeTab]}</span>
+        <span className="text-[13px] font-semibold">{tabTitles[activeTab]}</span>
         <button
           className="flex items-center justify-center hover:opacity-80"
           style={{
@@ -66,16 +69,16 @@ export function HelperPanel({ isOpen, onClose, isMobile = false }: HelperPanelPr
       {/* Tabs */}
       <div
         className="flex"
-        style={{ borderBottom: '1px solid var(--border-card)' }}
+        style={{ borderBottom: '1px solid var(--border-main)' }}
       >
         {(['user', 'soul', 'memory'] as TabType[]).map((tab) => (
           <button
             key={tab}
-            className="flex-1 py-2 text-[11px] transition-all"
+            className="flex-1 py-2.5 text-xs font-medium transition-all"
             style={{
               border: 'none',
               background: 'transparent',
-              color: activeTab === tab ? 'var(--accent-gold)' : 'var(--text-secondary)',
+              color: activeTab === tab ? 'var(--accent-gold)' : 'var(--text-muted)',
               cursor: 'pointer',
               borderBottom: activeTab === tab ? '2px solid var(--accent-gold)' : '2px solid transparent',
               marginBottom: -1,
@@ -88,7 +91,7 @@ export function HelperPanel({ isOpen, onClose, isMobile = false }: HelperPanelPr
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-2.5">
+      <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
         {activeTab === 'user' && <UserTab />}
         {activeTab === 'soul' && <SoulTab />}
         {activeTab === 'memory' && <MemoryTab />}
@@ -108,7 +111,7 @@ function UserTab() {
     >
       <div
         className="text-[10px] mb-1.5 flex items-center gap-1.5"
-        style={{ color: 'var(--text-secondary)' }}
+        style={{ color: 'var(--text-muted)' }}
       >
         <svg className="icon icon-sm" viewBox="0 0 24 24">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
@@ -137,7 +140,7 @@ function SoulTab() {
     >
       <div
         className="text-[10px] mb-1.5 flex items-center gap-1.5"
-        style={{ color: 'var(--text-secondary)' }}
+        style={{ color: 'var(--text-muted)' }}
       >
         <svg className="icon icon-sm" viewBox="0 0 24 24">
           <path d="M12 2a9 9 0 0 0-9 9c0 3.6 2.4 6.5 6 8.5V22h6v-2.5c3.6-2 6-4.9 6-8.5a9 9 0 0 0-9-9z" />
@@ -180,7 +183,7 @@ function MemoryItem({ id, content }: { id: string; content: string }) {
     >
       <div
         className="text-[10px] mb-1.5 flex items-center gap-1.5"
-        style={{ color: 'var(--text-secondary)' }}
+        style={{ color: 'var(--text-muted)' }}
       >
         <svg className="icon icon-sm" viewBox="0 0 24 24">
           <path d="M12 2a9 9 0 0 0-9 9c0 3.6 2.4 6.5 6 8.5V22h6v-2.5c3.6-2 6-4.9 6-8.5a9 9 0 0 0-9-9z" />

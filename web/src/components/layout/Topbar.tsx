@@ -11,12 +11,12 @@ interface TopbarProps {
 export function Topbar({ selectedAgent: _selectedAgent, selectedSession: _selectedSession }: TopbarProps) {
   return (
     <div
-      className="flex items-center justify-between px-4 flex-shrink-0 gap-4"
+      className="flex items-center justify-between px-3 flex-shrink-0 gap-4"
       style={{
         height: 'var(--topbar-height)',
         minHeight: 'var(--topbar-height)',
         background: 'var(--bg-secondary)',
-        borderBottom: '1px solid var(--border-card)',
+        borderBottom: '1px solid var(--border-main)',
       }}
     >
       {/* Left Section */}
@@ -25,7 +25,7 @@ export function Topbar({ selectedAgent: _selectedAgent, selectedSession: _select
         <div className="flex items-center gap-2">
           <PstepLogo />
           <span
-            className="text-sm font-semibold tracking-wide"
+            className="text-[13px] font-semibold tracking-wide"
             style={{ color: 'var(--text-primary)' }}
           >
             pstep
