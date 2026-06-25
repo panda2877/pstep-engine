@@ -30,6 +30,8 @@ export function AgentBar({
   const [renamingSession, setRenamingSession] = useState<Session | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const renameInputRef = useRef<HTMLInputElement>(null);
+  // 删除确认状态
+  const [deletingSession, setDeletingSession] = useState<Session | null>(null);
 
   // 加载项目和 Agent 列表
   useEffect(() => {
@@ -399,15 +401,8 @@ export function AgentBar({
               gap: 6,
             }}
             className="hover:bg-[var(--bg-hover)]"
-            onClick={async () => {
-              try {
-                await sessionApi.delete(contextMenu.session.id);
-                if (state.selectedAgentId) {
-                  await fetchSessions(state.selectedAgentId);
-                }
-              } catch (err) {
-                console.error('[AgentBar] Failed to delete session:', err);
-              }
+            onClick={() => {
+              setDeletingSession(contextMenu.session);
               setContextMenu(null);
             }}
           >
@@ -497,6 +492,80 @@ export function AgentBar({
                 }}
               >
                 确认
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 删除确认弹框 */}
+      {deletingSession && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 2000,
+          }}
+          onClick={() => setDeletingSession(null)}
+        >
+          <div
+            style={{
+              background: 'var(--bg-secondary)',
+              borderRadius: 12,
+              padding: 20,
+              width: 280,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>
+              删除会话
+            </h3>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 16, lineHeight: 1.5 }}>
+              确定要删除「{deletingSession.title || '新会话'}」吗？此操作不可恢复。
+            </p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setDeletingSession(null)}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: 6,
+                  border: '1px solid var(--border-card)',
+                  background: 'transparent',
+                  color: 'var(--text-secondary)',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                }}
+              >
+                取消
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    await sessionApi.delete(deletingSession.id);
+                    if (state.selectedAgentId) {
+                      await fetchSessions(state.selectedAgentId);
+                    }
+                  } catch (err) {
+                    console.error('[AgentBar] Failed to delete session:', err);
+                  }
+                  setDeletingSession(null);
+                }}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: 6,
+                  border: 'none',
+                  background: '#ef4444',
+                  color: '#fff',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                }}
+              >
+                删除
               </button>
             </div>
           </div>
