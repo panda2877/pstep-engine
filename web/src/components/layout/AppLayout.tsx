@@ -9,7 +9,6 @@ import { FnBar } from './FnBar';
 import { AgentBar } from './AgentBar';
 import { MessageArea } from './MessageArea';
 import { HelperPanel } from './HelperPanel';
-import { MobileNav } from './MobileNav';
 
 export function AppLayout() {
   const [activeView, setActiveView] = useState<'chat' | 'setting'>('chat');
@@ -22,8 +21,12 @@ export function AppLayout() {
     <div className="flex flex-col h-screen" style={{ background: 'var(--bg-primary)' }}>
       {/* Topbar */}
       <Topbar
-        selectedAgent={selectedAgent}
-        selectedSession={selectedSession}
+        isMobile={mobileView !== 'chat'}
+        onBack={() => setMobileView('agents')}
+        onToggleHelper={() => {
+          setHelperOpen(true);
+          setMobileView('helper');
+        }}
       />
 
       {/* Main Layout */}
@@ -36,7 +39,7 @@ export function AppLayout() {
           />
         </div>
 
-        {/* Agent Bar - 桌面端或移动端 agents 视图 */}
+        {/* Agent Bar - 桌面端始终显示；移动端仅 agents 视图 */}
         <div className={`${
           mobileView === 'agents' ? 'flex' : 'hidden'
         } md:flex flex-shrink-0`}>
@@ -44,11 +47,15 @@ export function AppLayout() {
             selectedAgent={selectedAgent}
             selectedSession={selectedSession}
             onAgentSelect={setSelectedAgent}
-            onSessionSelect={setSelectedSession}
+            onSessionSelect={(s) => {
+              setSelectedSession(s);
+              // 移动端选择会话后切到聊天视图
+              if (mobileView !== 'chat') setMobileView('chat');
+            }}
           />
         </div>
 
-        {/* Message Area - 桌面端或移动端 chat 视图 */}
+        {/* Message Area - 桌面端始终显示；移动端仅 chat 视图 */}
         <div className={`${
           mobileView === 'chat' ? 'flex' : 'hidden'
         } md:flex flex-1 min-w-0`}>
@@ -67,15 +74,6 @@ export function AppLayout() {
           onMobileOverlayClose={() => setMobileView('chat')}
         />
       </div>
-
-      {/* Mobile Navigation */}
-      <MobileNav
-        activeView={mobileView}
-        onViewChange={(view) => {
-          setMobileView(view);
-          if (view === 'helper') setHelperOpen(true);
-        }}
-      />
     </div>
   );
 }

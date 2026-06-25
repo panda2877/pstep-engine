@@ -1,14 +1,19 @@
 /**
  * Topbar 组件
  * 顶部导航栏：品牌、会话信息、连接状态
+ * 移动端：< 返回按钮 + 辅助面板按钮
  */
 
 interface TopbarProps {
-  selectedAgent: string;
-  selectedSession: string;
+  /** 移动端：返回 Agent 列表 */
+  onBack?: () => void;
+  /** 移动端：切换辅助面板 */
+  onToggleHelper?: () => void;
+  /** 移动端：当前视图 */
+  isMobile?: boolean;
 }
 
-export function Topbar({ selectedAgent: _selectedAgent, selectedSession: _selectedSession }: TopbarProps) {
+export function Topbar({ onBack, onToggleHelper, isMobile }: TopbarProps) {
   return (
     <div
       className="flex items-center justify-between flex-shrink-0"
@@ -23,6 +28,30 @@ export function Topbar({ selectedAgent: _selectedAgent, selectedSession: _select
     >
       {/* Left Section */}
       <div className="flex items-center" style={{ gap: 12 }}>
+        {/* Back button - 仅移动端显示 */}
+        {isMobile && (
+          <button
+            onClick={onBack}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 32,
+              height: 32,
+              borderRadius: 6,
+              border: 'none',
+              background: 'transparent',
+              color: 'var(--text-secondary)',
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
+        )}
+
         {/* Brand */}
         <div className="flex items-center" style={{ gap: 8 }}>
           <PstepLogo />
@@ -36,12 +65,12 @@ export function Topbar({ selectedAgent: _selectedAgent, selectedSession: _select
 
         {/* Divider */}
         <div
-          className="w-px"
+          className="hidden md:block w-px"
           style={{ height: 20, background: 'var(--border-card)' }}
         />
 
-        {/* Session Info */}
-        <div className="hidden sm:flex items-center" style={{ gap: 12 }}>
+        {/* Session Info - 仅桌面端显示 */}
+        <div className="hidden md:flex items-center" style={{ gap: 12 }}>
           <SessionInfoItem label="模型" value="minimax-main" highlight />
           <SessionInfoItem label="上下文" value="2,847 / 32,768" />
           <MilestoneBadge milestone="MS7" progress={25} />
@@ -50,7 +79,35 @@ export function Topbar({ selectedAgent: _selectedAgent, selectedSession: _select
 
       {/* Right Section */}
       <div className="flex items-center" style={{ gap: 16 }}>
-        <ConnectionStatus connected duration="8642" />
+        {/* Connection Status - 仅桌面端显示 */}
+        <div className="hidden md:block">
+          <ConnectionStatus connected duration="8642" />
+        </div>
+
+        {/* Helper panel toggle - 仅移动端显示 */}
+        {isMobile && (
+          <button
+            onClick={onToggleHelper}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 32,
+              height: 32,
+              borderRadius: 6,
+              border: '1px solid var(--border-card)',
+              background: 'transparent',
+              color: 'var(--text-secondary)',
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <line x1="15" y1="3" x2="15" y2="21" />
+            </svg>
+          </button>
+        )}
       </div>
     </div>
   );
