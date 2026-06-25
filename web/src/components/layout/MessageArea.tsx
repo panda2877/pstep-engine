@@ -10,6 +10,8 @@ interface MessageAreaProps {
   selectedAgent: string;
   selectedSession: string;
   onToggleHelper: () => void;
+  /** 移动端：返回 Agent 列表 */
+  onBack?: () => void;
 }
 
 interface Message {
@@ -45,6 +47,7 @@ export function MessageArea({
   selectedAgent,
   selectedSession,
   onToggleHelper,
+  onBack,
 }: MessageAreaProps) {
   const [messages] = useState<Message[]>(MOCK_MESSAGES);
   const [inputValue, setInputValue] = useState('');
@@ -82,6 +85,7 @@ export function MessageArea({
           {/* Back Button (Mobile) */}
           <button
             className="md:hidden flex items-center justify-center"
+            onClick={onBack}
             style={{
               width: 32,
               height: 32,

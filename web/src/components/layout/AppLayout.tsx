@@ -20,13 +20,7 @@ export function AppLayout() {
   return (
     <div className="flex flex-col h-screen" style={{ background: 'var(--bg-primary)' }}>
       {/* Topbar */}
-      <Topbar
-        onBack={() => setMobileView('agents')}
-        onToggleHelper={() => {
-          setHelperOpen(true);
-          setMobileView('helper');
-        }}
-      />
+      <Topbar />
 
       {/* Main Layout */}
       <div className="flex flex-1 overflow-hidden">
@@ -48,7 +42,6 @@ export function AppLayout() {
             onAgentSelect={setSelectedAgent}
             onSessionSelect={(s) => {
               setSelectedSession(s);
-              // 移动端选择会话后切到聊天视图
               if (mobileView !== 'chat') setMobileView('chat');
             }}
           />
@@ -61,7 +54,18 @@ export function AppLayout() {
           <MessageArea
             selectedAgent={selectedAgent}
             selectedSession={selectedSession}
-            onToggleHelper={() => setHelperOpen(!helperOpen)}
+            onToggleHelper={() => {
+              if (!helperOpen) {
+                // 打开：桌面端 toggle，移动端切到 helper 视图
+                setHelperOpen(true);
+                setMobileView('helper');
+              } else {
+                // 关闭
+                setHelperOpen(false);
+                setMobileView('chat');
+              }
+            }}
+            onBack={() => setMobileView('agents')}
           />
         </div>
 
