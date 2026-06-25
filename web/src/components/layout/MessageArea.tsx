@@ -4,6 +4,7 @@
  */
 
 import { useState } from 'react';
+import { SearchModal } from './SearchModal';
 
 interface MessageAreaProps {
   selectedAgent: string;
@@ -61,8 +62,13 @@ export function MessageArea({
     }
   };
 
+  const [searchOpen, setSearchOpen] = useState(false);
+
   return (
     <div className="flex flex-col flex-1 min-w-0" style={{ background: 'var(--bg-primary)' }}>
+      {/* Search Modal */}
+      <SearchModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
+
       {/* Message Header */}
       <div
         className="flex items-center justify-between flex-shrink-0"
@@ -158,6 +164,7 @@ export function MessageArea({
               cursor: 'pointer',
             }}
             title="搜索会话"
+            onClick={() => setSearchOpen(true)}
           >
             <svg className="icon" viewBox="0 0 24 24" style={{ width: 14, height: 14 }}>
               <circle cx="11" cy="11" r="8" />
