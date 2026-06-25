@@ -64,13 +64,17 @@ export function AppLayout() {
           isOpen={helperOpen}
           onClose={() => setHelperOpen(false)}
           isMobile={mobileView === 'helper'}
+          onMobileOverlayClose={() => setMobileView('chat')}
         />
       </div>
 
       {/* Mobile Navigation */}
       <MobileNav
         activeView={mobileView}
-        onViewChange={setMobileView}
+        onViewChange={(view) => {
+          setMobileView(view);
+          if (view === 'helper') setHelperOpen(true);
+        }}
       />
     </div>
   );

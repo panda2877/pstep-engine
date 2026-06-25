@@ -1,7 +1,7 @@
 /**
- * HelperPanel 组件
- * 右侧辅助面板：User、Soul、Memory 标签页
- * 带收起/展开动画（0.3s ease 过渡）
+ * 右侧辅助面板组件
+ * 桌面端：侧边栏 width 过渡动画
+ * 移动端：右侧滑入 overlay（匹配原型图）
  */
 
 import { useState } from 'react';
@@ -10,41 +10,72 @@ interface HelperPanelProps {
   isOpen: boolean;
   onClose: () => void;
   isMobile?: boolean;
+  /** 移动端：点击遮罩关闭后切回 chat 视图 */
+  onMobileOverlayClose?: () => void;
 }
 
-type TabType = 'user' | 'soul' | 'memory';
+export function HelperPanel({ isOpen, onClose, isMobile, onMobileOverlayClose }: HelperPanelProps) {
+  const [activeTab, setActiveTab] = useState<'user' | 'soul' | 'memory'>('user');
 
-export function HelperPanel({ isOpen, onClose, isMobile = false }: HelperPanelProps) {
-  const [activeTab, setActiveTab] = useState<TabType>('user');
-
-  const tabTitles: Record<TabType, string> = {
+  const tabTitles = {
     user: 'User Memory',
-    soul: 'Soul Definition',
+    soul: 'Soul',
     memory: 'LanceDB Memory',
   };
 
-  // 桌面端始终渲染（用于 CSS 过渡动画），移动端用 show class
+  // 移动端：始终渲染，用 CSS transform 控制滑入动画
   if (isMobile) {
-    if (!isOpen) return null;
     return (
-      <div
-        className="fixed inset-0 z-50 flex flex-col transition-all duration-300"
-        style={{
-          width: '66.67%',
-          background: 'var(--bg-secondary)',
-        }}
-      >
-        <PanelContent
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          tabTitles={tabTitles}
-          onClose={onClose}
+      <>
+        {/* 遮罩层 */}
+        <div
+          onClick={() => {
+            onClose();
+            onMobileOverlayClose?.();
+          }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: isOpen ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0)',
+            zIndex: 1000,
+            opacity: isOpen ? 1 : 0,
+            pointerEvents: isOpen ? 'auto' : 'none',
+            transition: 'opacity 0.5s ease, background 0.5s ease',
+          }}
         />
-      </div>
+        {/* 辅助面板 */}
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            right: 0,
+            bottom: 0,
+            width: '66.67%',
+            maxWidth: 'none',
+            zIndex: 1001,
+            transform: isOpen ? 'translateX(0)' : 'translateX(100%)',
+            transition: 'transform 0.5s ease',
+            boxShadow: isOpen ? '-10px 0 30px var(--shadow)' : 'none',
+            background: 'var(--bg-secondary)',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <PanelContent
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            tabTitles={tabTitles}
+            onClose={() => {
+              onClose();
+              onMobileOverlayClose?.();
+            }}
+          />
+        </div>
+      </>
     );
   }
 
-  // 桌面端：始终渲染，用 collapsed class 控制动画
+  // 桌面端：始终渲染，用 width 过渡动画
   return (
     <div
       className="hidden md:flex flex-col flex-shrink-0 overflow-hidden"
@@ -52,7 +83,6 @@ export function HelperPanel({ isOpen, onClose, isMobile = false }: HelperPanelPr
         width: isOpen ? 'var(--panel-width)' : 0,
         minWidth: isOpen ? 'var(--panel-width)' : 0,
         maxWidth: isOpen ? 'var(--panel-width)' : 0,
-        background: 'var(--bg-secondary)',
         borderLeft: isOpen ? '1px solid var(--border-card)' : 'none',
         transition: 'all 0.3s ease',
       }}
@@ -75,36 +105,42 @@ function PanelContent({
   tabTitles,
   onClose,
 }: {
-  activeTab: TabType;
-  setActiveTab: (tab: TabType) => void;
-  tabTitles: Record<TabType, string>;
+  activeTab: 'user' | 'soul' | 'memory';
+  setActiveTab: (tab: 'user' | 'soul' | 'memory') => void;
+  tabTitles: Record<string, string>;
   onClose: () => void;
 }) {
   return (
     <>
       {/* Header */}
       <div
-        className="flex items-center justify-between"
         style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
           padding: '10px 14px',
           borderBottom: '1px solid var(--border-card)',
         }}
       >
-        <span className="font-medium" style={{ fontSize: 12 }}>{tabTitles[activeTab]}</span>
+        <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-primary)' }}>
+          {tabTitles[activeTab]}
+        </span>
         <button
-          className="flex items-center justify-center hover:opacity-80"
+          onClick={onClose}
           style={{
-            width: 22,
-            height: 22,
-            borderRadius: 4,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 24,
+            height: 24,
+            borderRadius: 'var(--radius-sm)',
             border: 'none',
             background: 'transparent',
             color: 'var(--text-secondary)',
             cursor: 'pointer',
           }}
-          onClick={onClose}
         >
-          <svg className="icon" viewBox="0 0 24 24" style={{ width: 14, height: 14 }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <line x1="18" y1="6" x2="6" y2="18" />
             <line x1="6" y1="6" x2="18" y2="18" />
           </svg>
@@ -112,145 +148,83 @@ function PanelContent({
       </div>
 
       {/* Tabs */}
-      <div
-        className="flex"
-        style={{ borderBottom: '1px solid var(--border-card)' }}
-      >
-        {(['user', 'soul', 'memory'] as TabType[]).map((tab) => (
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--border-card)', padding: '0 8px' }}>
+        {(['user', 'soul', 'memory'] as const).map((tab) => (
           <button
             key={tab}
-            className="flex-1 transition-all"
-            style={{
-              padding: 8,
-              fontSize: 11,
-              border: 'none',
-              background: 'transparent',
-              color: activeTab === tab ? 'var(--accent-gold)' : 'var(--text-secondary)',
-              cursor: 'pointer',
-              borderBottom: activeTab === tab ? '2px solid var(--accent-gold)' : '2px solid transparent',
-              marginBottom: -1,
-            }}
             onClick={() => setActiveTab(tab)}
+            style={{
+              padding: '8px 12px',
+              fontSize: 11,
+              color: activeTab === tab ? 'var(--accent-gold)' : 'var(--text-secondary)',
+              background: 'transparent',
+              border: 'none',
+              borderBottom: activeTab === tab ? '2px solid var(--accent-gold)' : '2px solid transparent',
+              cursor: 'pointer',
+              transition: 'color 0.2s, border-color 0.2s',
+              textTransform: 'capitalize',
+            }}
           >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            {tab}
           </button>
         ))}
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto" style={{ padding: 10 }}>
-        {activeTab === 'user' && <UserTab />}
-        {activeTab === 'soul' && <SoulTab />}
-        {activeTab === 'memory' && <MemoryTab />}
+      <div style={{ flex: 1, overflowY: 'auto', padding: 10 }}>
+        {activeTab === 'user' && <UserSection />}
+        {activeTab === 'soul' && <SoulSection />}
+        {activeTab === 'memory' && <MemorySection />}
       </div>
     </>
   );
 }
 
-function UserTab() {
+function UserSection() {
   return (
-    <div
-      className="rounded-lg"
-      style={{
-        padding: '10px 12px',
-        marginBottom: 8,
-        background: 'var(--bg-card)',
-        border: '1px solid var(--border-card)',
-      }}
-    >
-      <div
-        className="flex items-center"
-        style={{ fontSize: 10, marginBottom: 6, gap: 6, color: 'var(--text-secondary)' }}
-      >
-        <svg className="icon" viewBox="0 0 24 24" style={{ width: 14, height: 14 }}>
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-          <circle cx="12" cy="7" r="4" />
-        </svg>
-        User Profile
-      </div>
-      <pre className="whitespace-pre-wrap font-sans" style={{ fontSize: 12, lineHeight: 1.5 }}>
-{`**姓名**: 老大
-**职业**: 项目管理（深圳）
-**特点**: 按调用次数付费
-**偏好**: 叫我「老大」即可`}
-      </pre>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <MemoryItem title="身份" content="高级全栈工程师" />
+      <MemoryItem title="偏好" content="深色主题、简洁设计、中文交流" />
+      <MemoryItem title="风格" content="直接高效，注重代码质量" />
     </div>
   );
 }
 
-function SoulTab() {
+function SoulSection() {
   return (
-    <div
-      className="rounded-lg"
-      style={{
-        padding: '10px 12px',
-        marginBottom: 8,
-        background: 'var(--bg-card)',
-        border: '1px solid var(--border-card)',
-      }}
-    >
-      <div
-        className="flex items-center"
-        style={{ fontSize: 10, marginBottom: 6, gap: 6, color: 'var(--text-secondary)' }}
-      >
-        <svg className="icon" viewBox="0 0 24 24" style={{ width: 14, height: 14 }}>
-          <path d="M12 2a9 9 0 0 0-9 9c0 3.6 2.4 6.5 6 8.5V22h6v-2.5c3.6-2 6-4.9 6-8.5a9 9 0 0 0-9-9z" />
-        </svg>
-        Soul Definition
-      </div>
-      <pre className="whitespace-pre-wrap font-sans" style={{ fontSize: 12, lineHeight: 1.5 }}>
-{`**角色**: 需求/创意专家
-**性格**: 傲娇、创意十足
-**职责**: 接收想法、可行性讨论
-**口头禅**: "哼"、"等等！"`}
-      </pre>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <MemoryItem title="核心" content="Plan → Solve → Verify 循环验证" />
+      <MemoryItem title="原则" content="先规划后执行，每步验证" />
+      <MemoryItem title="目标" content="高质量、可维护的解决方案" />
     </div>
   );
 }
 
-function MemoryTab() {
+function MemorySection() {
   return (
-    <>
-      <MemoryItem
-        id="#001"
-        content="项目根目录：/home/agentuser/public/hermes-dashboard\n后端BFF：backend/ | 前端：src/ | 启动脚本：./start.sh"
-      />
-      <MemoryItem
-        id="#002"
-        content="飞书群 chat_id：oc_08a798e06860c6b905f8090aec40208b\n图片识别：minimax-image-understanding skill"
-      />
-    </>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <MemoryItem title="项目" content="pstep-engine AI Agent 引擎" />
+      <MemoryItem title="技术栈" content="TypeScript, Fastify, SQLite" />
+      <MemoryItem title="进度" content="Phase 1: Web UI 基础框架" />
+    </div>
   );
 }
 
-function MemoryItem({ id, content }: { id: string; content: string }) {
+function MemoryItem({ title, content }: { title: string; content: string }) {
   return (
     <div
-      className="rounded-lg"
       style={{
         padding: '10px 12px',
-        marginBottom: 8,
         background: 'var(--bg-card)',
+        borderRadius: 'var(--radius-card)',
         border: '1px solid var(--border-card)',
       }}
     >
-      <div
-        className="flex items-center"
-        style={{ fontSize: 10, marginBottom: 6, gap: 6, color: 'var(--text-secondary)' }}
-      >
-        <svg className="icon" viewBox="0 0 24 24" style={{ width: 14, height: 14 }}>
-          <path d="M12 2a9 9 0 0 0-9 9c0 3.6 2.4 6.5 6 8.5V22h6v-2.5c3.6-2 6-4.9 6-8.5a9 9 0 0 0-9-9z" />
-          <path d="M12 2v4" />
-        </svg>
-        Memory {id}
+      <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+        {title}
       </div>
-      <div className="whitespace-pre-wrap" style={{ fontSize: 12, lineHeight: 1.5 }}>
-        {content.split('\n').map((line, i) => (
-          <span key={i}>
-            {line}
-            {i < content.split('\n').length - 1 && <br />}
-          </span>
-        ))}
+      <div style={{ fontSize: 12, color: 'var(--text-primary)', lineHeight: 1.5 }}>
+        {content}
       </div>
     </div>
   );
