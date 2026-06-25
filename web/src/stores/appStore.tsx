@@ -7,10 +7,24 @@ import { createContext, useContext, useReducer, useCallback, type ReactNode } fr
 import { agentApi, sessionApi, type Agent, type Session } from '../services/api';
 
 // ============================================================================
+// Project 类型（简化）
+// ============================================================================
+
+interface Project {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+// ============================================================================
 // State 类型
 // ============================================================================
 
 export interface AppState {
+  // Project 状态
+  projects: Project[];
+  selectedProjectId: string | null;
+
   // Agent 状态
   agents: Agent[];
   selectedAgentId: string | null;
@@ -28,6 +42,8 @@ export interface AppState {
 }
 
 const initialState: AppState = {
+  projects: [],
+  selectedProjectId: null,
   agents: [],
   selectedAgentId: null,
   agentsLoading: false,
@@ -44,6 +60,8 @@ const initialState: AppState = {
 // ============================================================================
 
 type AppAction =
+  | { type: 'SET_PROJECTS'; payload: Project[] }
+  | { type: 'SET_SELECTED_PROJECT'; payload: string | null }
   | { type: 'SET_AGENTS'; payload: Agent[] }
   | { type: 'SET_SELECTED_AGENT'; payload: string | null }
   | { type: 'SET_AGENTS_LOADING'; payload: boolean }
@@ -65,6 +83,10 @@ type AppAction =
 
 function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
+    case 'SET_PROJECTS':
+      return { ...state, projects: action.payload };
+    case 'SET_SELECTED_PROJECT':
+      return { ...state, selectedProjectId: action.payload };
     case 'SET_AGENTS':
       return { ...state, agents: action.payload };
     case 'SET_SELECTED_AGENT':
@@ -117,12 +139,13 @@ interface AppContextValue {
   state: AppState;
   dispatch: React.Dispatch<AppAction>;
   // 便捷方法
+  fetchProjects: () => Promise<void>;
   fetchAgents: () => Promise<void>;
   fetchSessions: (agentId: string) => Promise<void>;
   selectAgent: (agentId: string) => void;
   selectSession: (sessionId: string) => void;
   createAgent: (data: { name: string; initial?: string; description?: string; soul: any }) => Promise<string>;
-  createSession: (data: { projectId: string; agentId?: string; title?: string }) => Promise<string>;
+  createSession: (agentId: string, title?: string) => Promise<string>;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -133,6 +156,20 @@ const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
+
+  const fetchProjects = useCallback(async () => {
+    try {
+      const res = await fetch('/api/projects');
+      const { projects } = await res.json();
+      dispatch({ type: 'SET_PROJECTS', payload: projects });
+      // 自动选中第一个项目
+      if (projects.length > 0 && !state.selectedProjectId) {
+        dispatch({ type: 'SET_SELECTED_PROJECT', payload: projects[0].id });
+      }
+    } catch (err) {
+      console.error('[Store] Failed to fetch projects:', err);
+    }
+  }, [state.selectedProjectId]);
 
   const fetchAgents = useCallback(async () => {
     dispatch({ type: 'SET_AGENTS_LOADING', payload: true });
@@ -179,18 +216,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return id;
   }, [fetchAgents]);
 
-  const createSession = useCallback(async (data: { projectId: string; agentId?: string; title?: string }) => {
-    const { id } = await sessionApi.create(data);
-    if (data.agentId) {
-      await fetchSessions(data.agentId);
+  const createSession = useCallback(async (agentId: string, title?: string) => {
+    // 使用当前选中的项目，如果没有则用第一个项目
+    const projectId = state.selectedProjectId || state.projects[0]?.id;
+    if (!projectId) {
+      throw new Error('No project available');
     }
+    const { id } = await sessionApi.create({ projectId, agentId, title });
+    await fetchSessions(agentId);
     return id;
-  }, [fetchSessions]);
+  }, [state.selectedProjectId, state.projects, fetchSessions]);
 
   return (
     <AppContext.Provider value={{
       state,
       dispatch,
+      fetchProjects,
       fetchAgents,
       fetchSessions,
       selectAgent,

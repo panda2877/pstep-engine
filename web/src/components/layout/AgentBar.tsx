@@ -20,14 +20,15 @@ export function AgentBar({
   onAgentSelect,
   onSessionSelect,
 }: AgentBarProps) {
-  const { state, fetchAgents, fetchSessions, selectAgent } = useAppStore();
+  const { state, fetchProjects, fetchAgents, fetchSessions, selectAgent, createSession } = useAppStore();
   const [expandedAgent, setExpandedAgent] = useState<string | null>(selectedAgent);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  // 加载 Agent 列表
+  // 加载项目和 Agent 列表
   useEffect(() => {
+    fetchProjects();
     fetchAgents();
-  }, [fetchAgents]);
+  }, [fetchProjects, fetchAgents]);
 
   // 加载选中 Agent 的会话列表
   useEffect(() => {
@@ -260,17 +261,24 @@ export function AgentBar({
 
                   {/* New Session Button */}
                   <div
-                    className="flex items-center cursor-pointer opacity-0 hover:opacity-100 transition-opacity"
+                    className="flex items-center cursor-pointer hover:opacity-80 transition-opacity"
                     style={{
                       gap: 4,
-                      padding: '4px 8px',
+                      padding: '5px 8px',
                       borderRadius: 4,
                       fontSize: 10,
                       color: 'var(--text-secondary)',
+                      opacity: 0.7,
                     }}
-                    onClick={(e) => {
+                    onClick={async (e) => {
                       e.stopPropagation();
-                      // TODO: 新建会话
+                      if (!state.selectedAgentId) return;
+                      try {
+                        const sessionId = await createSession(state.selectedAgentId, '新会话');
+                        onSessionSelect(sessionId);
+                      } catch (err) {
+                        console.error('[AgentBar] Failed to create session:', err);
+                      }
                     }}
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 11, height: 11 }}>
