@@ -47,11 +47,17 @@ export function AgentBar({
   // 点击其他地方关闭右键菜单
   useEffect(() => {
     if (!contextMenu) return;
-    const handler = () => setContextMenu(null);
-    document.addEventListener('click', handler);
+    const handler = (e: MouseEvent) => {
+      // 检查点击是否在菜单内部
+      const target = e.target as HTMLElement;
+      if (target.closest('[data-context-menu]')) return;
+      setContextMenu(null);
+    };
+    // 使用 mousedown 而非 click，避免与菜单项的 click 事件冲突
+    document.addEventListener('mousedown', handler);
     document.addEventListener('contextmenu', handler);
     return () => {
-      document.removeEventListener('click', handler);
+      document.removeEventListener('mousedown', handler);
       document.removeEventListener('contextmenu', handler);
     };
   }, [contextMenu]);
@@ -342,6 +348,7 @@ export function AgentBar({
       {/* 右键菜单 */}
       {contextMenu && (
         <div
+          data-context-menu
           style={{
             position: 'fixed',
             left: contextMenu.x,
@@ -354,7 +361,7 @@ export function AgentBar({
             minWidth: 120,
             boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
           }}
-          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
         >
           <div
             style={{
