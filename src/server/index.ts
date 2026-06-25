@@ -10,7 +10,7 @@ import { existsSync } from 'fs';
 import cors from '@fastify/cors';
 import fastifyStatic from '@fastify/static';
 import { RuleEngine } from '../rules/rule-engine.js';
-import { ProjectDao, SessionDao, MessageDao } from '../db/dao.js';
+import { ProjectDao, SessionDao, MessageDao, AgentDao } from '../db/dao.js';
 import { createEngine } from '../engine/index.js';
 import type { PstepMessage } from '../types/messages.js';
 import type { HistoryEntry } from '../agent/orchestrator.js';
@@ -110,23 +110,67 @@ export function createServer(options: EngineServerOptions = {}) {
     return { status: 'deleted' };
   });
 
+  // ============================================================================
+  // Agent API
+  // ============================================================================
+
+  server.get('/api/agents', async () => ({ agents: AgentDao.findAll() }));
+
+  server.post('/api/agents', async (request) => {
+    const body = request.body as { name: string; avatar?: string; initial?: string; description?: string; soul: any };
+    const agent = AgentDao.create({
+      name: body.name,
+      avatar: body.avatar,
+      initial: body.initial,
+      description: body.description,
+      soul: body.soul,
+      status: 'active',
+    });
+    return { id: agent.id, status: 'created' };
+  });
+
+  server.get<{ Params: { id: string } }>('/api/agents/:id', async (request) => {
+    const agent = AgentDao.findById(request.params.id);
+    if (!agent) return { id: request.params.id, status: 'not_found' };
+    return { ...agent, status: 'ok' };
+  });
+
+  server.put<{ Params: { id: string } }>('/api/agents/:id', async (request) => {
+    const body = request.body as { name?: string; avatar?: string; initial?: string; description?: string; soul?: any; status?: 'active' | 'inactive' };
+    const agent = AgentDao.update(request.params.id, body);
+    if (!agent) return { id: request.params.id, status: 'not_found' };
+    return { ...agent, status: 'updated' };
+  });
+
+  server.delete<{ Params: { id: string } }>('/api/agents/:id', async (request) => {
+    const deleted = AgentDao.delete(request.params.id);
+    return { status: deleted ? 'deleted' : 'not_found' };
+  });
+
+  server.get<{ Params: { id: string } }>('/api/agents/:id/sessions', async (request) => {
+    const sessions = SessionDao.findByAgent(request.params.id);
+    return { sessions };
+  });
+
   server.get('/api/sessions', async (request) => {
-    const query = request.query as { projectId?: string };
+    const query = request.query as { projectId?: string; agentId?: string };
+    if (query.agentId) return { sessions: SessionDao.findByAgent(query.agentId) };
     if (query.projectId) return { sessions: SessionDao.findByProject(query.projectId) };
     return { sessions: [] };
   });
 
   server.post('/api/sessions', async (request) => {
-    const body = request.body as { projectId: string; title?: string };
-    const session = SessionDao.create({ projectId: body.projectId, title: body.title });
-    return { id: session.id, projectId: session.projectId, status: 'created' };
+    const body = request.body as { projectId: string; agentId?: string; title?: string };
+    const session = SessionDao.create({ projectId: body.projectId, agentId: body.agentId, title: body.title });
+    return { id: session.id, projectId: session.projectId, agentId: session.agentId, status: 'created' };
   });
 
   server.get<{ Params: { id: string } }>('/api/sessions/:id', async (request) => {
     const session = SessionDao.findById(request.params.id);
     if (!session) return { id: request.params.id, status: 'not_found' };
     const messages = MessageDao.findBySession(request.params.id);
-    return { ...session, status: 'ok', messages };
+    const agent = session.agentId ? AgentDao.findById(session.agentId) : null;
+    return { ...session, agent, status: 'ok', messages };
   });
 
   server.delete<{ Params: { id: string } }>('/api/sessions/:id', async (request) => {

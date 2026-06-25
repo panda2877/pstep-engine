@@ -52,12 +52,40 @@ export const ProjectSchema = Type.Object({
 export type Project = Static<typeof ProjectSchema>;
 
 // ============================================================================
+// Agent Soul
+// ============================================================================
+
+export interface AgentSoul {
+  role: string;
+  personality: string;
+  responsibilities: string;
+  catchphrase?: string;
+}
+
+// ============================================================================
+// Agent
+// ============================================================================
+
+export interface Agent {
+  id: string;
+  name: string;
+  avatar?: string;
+  initial?: string;
+  description?: string;
+  soul: AgentSoul;
+  status: 'active' | 'inactive';
+  createdAt: number;
+  updatedAt: number;
+}
+
+// ============================================================================
 // 会话
 // ============================================================================
 
 export const SessionSchema = Type.Object({
   id: Type.String(),
   projectId: Type.String(),
+  agentId: Type.Optional(Type.String()),
   title: Type.Optional(Type.String()),
   createdAt: Type.Number(),
   updatedAt: Type.Number(),

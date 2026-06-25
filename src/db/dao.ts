@@ -3,7 +3,7 @@
  */
 
 import { getDatabaseManager } from "./connection.js";
-import { Project, ProjectRule, Session, SessionMessage, MemoryEntry } from "../types/rules.js";
+import { Project, ProjectRule, Session, SessionMessage, MemoryEntry, Agent, AgentSoul } from "../types/rules.js";
 import { v4 as uuidv4 } from "uuid";
 
 const db = getDatabaseManager();
@@ -139,8 +139,8 @@ export const RuleDao = {
 // ============================================================================
 
 const insertSession = db.prepare(`
-  INSERT INTO sessions (id, project_id, title, created_at, updated_at)
-  VALUES (?, ?, ?, ?, ?)
+  INSERT INTO sessions (id, project_id, agent_id, title, created_at, updated_at)
+  VALUES (?, ?, ?, ?, ?, ?)
 `);
 
 const selectSessionById = db.prepare(`
@@ -149,6 +149,10 @@ const selectSessionById = db.prepare(`
 
 const selectSessionsByProject = db.prepare(`
   SELECT * FROM sessions WHERE project_id = ? ORDER BY updated_at DESC
+`);
+
+const selectSessionsByAgent = db.prepare(`
+  SELECT * FROM sessions WHERE agent_id = ? ORDER BY updated_at DESC
 `);
 
 const updateSession = db.prepare(`
@@ -163,7 +167,7 @@ export const SessionDao = {
   create(session: Omit<Session, "id" | "createdAt" | "updatedAt">): Session {
     const id = uuidv4();
     const now = Date.now();
-    insertSession.run(id, session.projectId, session.title || null, now, now);
+    insertSession.run(id, session.projectId, session.agentId || null, session.title || null, now, now);
     return { ...session, id, createdAt: now, updatedAt: now };
   },
 
@@ -173,6 +177,10 @@ export const SessionDao = {
 
   findByProject(projectId: string): Session[] {
     return selectSessionsByProject.all(projectId) as Session[];
+  },
+
+  findByAgent(agentId: string): Session[] {
+    return selectSessionsByAgent.all(agentId) as Session[];
   },
 
   update(id: string, data: Partial<Pick<Session, "title">>): Session | null {
@@ -220,6 +228,89 @@ export const MessageDao = {
 
   deleteBySession(sessionId: string): void {
     deleteMessagesBySession.run(sessionId);
+  },
+};
+
+// ============================================================================
+// Agent DAO
+// ============================================================================
+
+const insertAgent = db.prepare(`
+  INSERT INTO agents (id, name, avatar, initial, description, soul_json, status, created_at, updated_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+`);
+
+const selectAgentById = db.prepare(`
+  SELECT * FROM agents WHERE id = ?
+`);
+
+const selectAllAgents = db.prepare(`
+  SELECT * FROM agents ORDER BY created_at DESC
+`);
+
+const updateAgent = db.prepare(`
+  UPDATE agents SET name = ?, avatar = ?, initial = ?, description = ?, soul_json = ?, status = ?, updated_at = ? WHERE id = ?
+`);
+
+const deleteAgent = db.prepare(`
+  DELETE FROM agents WHERE id = ?
+`);
+
+function parseAgent(row: any): Agent {
+  return {
+    id: row.id,
+    name: row.name,
+    avatar: row.avatar,
+    initial: row.initial,
+    description: row.description,
+    soul: JSON.parse(row.soul_json),
+    status: row.status,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export const AgentDao = {
+  create(agent: Omit<Agent, "id" | "createdAt" | "updatedAt">): Agent {
+    const id = uuidv4();
+    const now = Date.now();
+    insertAgent.run(
+      id, agent.name, agent.avatar || null, agent.initial || null,
+      agent.description || null, JSON.stringify(agent.soul),
+      agent.status || 'active', now, now
+    );
+    return { ...agent, id, createdAt: now, updatedAt: now };
+  },
+
+  findById(id: string): Agent | null {
+    const row = selectAgentById.get(id) as any;
+    return row ? parseAgent(row) : null;
+  },
+
+  findAll(): Agent[] {
+    const rows = selectAllAgents.all() as any[];
+    return rows.map(parseAgent);
+  },
+
+  update(id: string, data: Partial<Pick<Agent, "name" | "avatar" | "initial" | "description" | "soul" | "status">>): Agent | null {
+    const agent = this.findById(id);
+    if (!agent) return null;
+    const now = Date.now();
+    updateAgent.run(
+      data.name ?? agent.name,
+      data.avatar ?? agent.avatar ?? null,
+      data.initial ?? agent.initial ?? null,
+      data.description ?? agent.description ?? null,
+      JSON.stringify(data.soul ?? agent.soul),
+      data.status ?? agent.status,
+      now, id
+    );
+    return { ...agent, ...data, updatedAt: now };
+  },
+
+  delete(id: string): boolean {
+    const result = deleteAgent.run(id);
+    return result.changes > 0;
   },
 };
 

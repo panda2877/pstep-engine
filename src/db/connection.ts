@@ -50,13 +50,27 @@ export function initializeDatabase(db: InstanceType<typeof DatabaseConstructor>)
       FOREIGN KEY (project_id) REFERENCES projects(id)
     );
 
+    CREATE TABLE IF NOT EXISTS agents (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      avatar TEXT,
+      initial TEXT,
+      description TEXT,
+      soul_json TEXT NOT NULL,
+      status TEXT DEFAULT 'active',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS sessions (
       id TEXT PRIMARY KEY,
       project_id TEXT NOT NULL,
+      agent_id TEXT,
       title TEXT,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL,
-      FOREIGN KEY (project_id) REFERENCES projects(id)
+      FOREIGN KEY (project_id) REFERENCES projects(id),
+      FOREIGN KEY (agent_id) REFERENCES agents(id)
     );
 
     CREATE TABLE IF NOT EXISTS session_messages (
@@ -79,4 +93,11 @@ export function initializeDatabase(db: InstanceType<typeof DatabaseConstructor>)
       FOREIGN KEY (project_id) REFERENCES projects(id)
     );
   `);
+
+  // 迁移：为已有 sessions 表添加 agent_id 字段（如果不存在）
+  try {
+    db.exec(`ALTER TABLE sessions ADD COLUMN agent_id TEXT REFERENCES agents(id)`);
+  } catch {
+    // 列已存在，忽略错误
+  }
 }
