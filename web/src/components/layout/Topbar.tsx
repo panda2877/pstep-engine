@@ -4,16 +4,28 @@
  * 移动端：< 返回按钮 + 辅助面板按钮
  */
 
+import { useState, useEffect } from 'react';
+
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < breakpoint);
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, [breakpoint]);
+  return isMobile;
+}
+
 interface TopbarProps {
   /** 移动端：返回 Agent 列表 */
   onBack?: () => void;
   /** 移动端：切换辅助面板 */
   onToggleHelper?: () => void;
-  /** 移动端：当前视图 */
-  isMobile?: boolean;
 }
 
-export function Topbar({ onBack, onToggleHelper, isMobile }: TopbarProps) {
+export function Topbar({ onBack, onToggleHelper }: TopbarProps) {
+  const isMobile = useIsMobile();
   return (
     <div
       className="flex items-center justify-between flex-shrink-0"

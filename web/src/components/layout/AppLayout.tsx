@@ -21,7 +21,6 @@ export function AppLayout() {
     <div className="flex flex-col h-screen" style={{ background: 'var(--bg-primary)' }}>
       {/* Topbar */}
       <Topbar
-        isMobile={mobileView !== 'chat'}
         onBack={() => setMobileView('agents')}
         onToggleHelper={() => {
           setHelperOpen(true);
