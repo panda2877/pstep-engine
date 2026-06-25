@@ -104,37 +104,38 @@ export function AgentBar({
       style={{
         width: 'var(--agent-width)',
         minWidth: 'var(--agent-width)',
-        background: 'var(--bg-primary)',
-        borderRight: '1px solid var(--border-main)',
+        background: 'var(--bg-secondary)',
+        borderRight: '1px solid var(--border-card)',
         overflow: 'hidden',
       }}
     >
       {/* Header */}
       <div
-        className="flex items-center justify-between px-3 py-3"
+        className="flex items-center justify-between"
         style={{
-          fontSize: 11,
-          fontWeight: 600,
-          color: 'var(--text-muted)',
+          padding: '10px 14px',
+          borderBottom: '1px solid var(--border-card)',
+          fontSize: 10,
+          color: 'var(--text-secondary)',
           textTransform: 'uppercase',
-          letterSpacing: 1,
+          letterSpacing: 0.5,
         }}
       >
         <span>agents</span>
         <button
           className="flex items-center justify-center hover:opacity-80"
           style={{
-            width: 20,
-            height: 20,
+            width: 22,
+            height: 22,
             borderRadius: 4,
             border: 'none',
             background: 'transparent',
-            color: 'var(--text-muted)',
+            color: 'var(--text-secondary)',
             cursor: 'pointer',
           }}
           title="新建 Agent"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 12, height: 12 }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 13, height: 13 }}>
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
@@ -142,38 +143,47 @@ export function AgentBar({
       </div>
 
       {/* Agent List */}
-      <div className="flex-1 overflow-y-auto flex flex-col px-2 gap-0.5">
+      <div className="flex-1 overflow-y-auto flex flex-col" style={{ padding: 6 }}>
         {MOCK_AGENTS.map((agent) => (
-          <div key={agent.id} className="mb-0.5">
+          <div key={agent.id} style={{ marginBottom: 2 }}>
             {/* Agent Item */}
             <div
-              className="flex items-center gap-2 py-2 px-2 rounded-lg cursor-pointer transition-all duration-200"
+              className="flex items-center cursor-pointer transition-all duration-200"
               style={{
-                background: selectedAgent === agent.name ? 'var(--bg-active)' : 'transparent',
+                gap: 8,
+                padding: '8px 8px 8px 6px',
+                borderRadius: 'var(--radius-card)',
+                background: selectedAgent === agent.name ? 'var(--bg-card)' : 'transparent',
+                borderLeft: selectedAgent === agent.name ? '2px solid var(--accent-gold)' : '2px solid transparent',
               }}
               onClick={() => handleAgentClick(agent)}
             >
               {/* Avatar */}
               <div
-                className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
-                style={{ background: 'var(--bg-card)' }}
+                className="flex items-center justify-center flex-shrink-0"
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: '50%',
+                  background: 'var(--bg-card)',
+                }}
               >
-                <span className="text-[14px] font-semibold" style={{ color: 'var(--text-primary)' }}>
+                <span className="font-semibold" style={{ fontSize: 11, color: 'var(--text-primary)' }}>
                   {agent.initial}
                 </span>
               </div>
 
               {/* Info */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5 text-[13px] font-medium">
+                <div className="flex items-center font-medium" style={{ fontSize: 12, gap: 6 }}>
                   <span>{agent.name}</span>
                   {selectedAgent === agent.name && (
-                    <div className="w-1 h-1 rounded-full" style={{ background: 'var(--accent-green)' }} />
+                    <div style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--accent-green)' }} />
                   )}
                 </div>
                 <div
-                  className="text-[11px] mt-0.5 truncate"
-                  style={{ color: 'var(--text-muted)' }}
+                  className="truncate"
+                  style={{ fontSize: 10, marginTop: 1, color: 'var(--text-secondary)' }}
                 >
                   {agent.description}
                 </div>
@@ -181,10 +191,13 @@ export function AgentBar({
 
               {/* Chevron */}
               <span
-                className="flex-shrink-0 text-[10px] transition-transform duration-200"
+                className="flex-shrink-0 flex items-center justify-center transition-transform duration-200"
                 style={{
+                  width: 16,
+                  height: 16,
                   color: 'var(--text-secondary)',
                   transform: expandedAgent === agent.name ? 'rotate(90deg)' : 'rotate(0deg)',
+                  fontSize: 10,
                 }}
               >
                 ▸
@@ -193,31 +206,54 @@ export function AgentBar({
 
             {/* Sessions */}
             {expandedAgent === agent.name && (
-              <div className="hidden lg:block py-2">
-                <div className="px-4 pb-1.5 text-[10px] font-semibold tracking-wider text-[var(--text-muted)] uppercase">
-                  当前会话
-                </div>
-                <div className="flex flex-col gap-px">
-                  {agent.sessions.map((session) => (
+              <div
+                className="hidden lg:block"
+                style={{
+                  padding: '4px 0 6px 22px',
+                  marginLeft: 12,
+                  borderLeft: '1px dashed var(--border-card)',
+                }}
+              >
+                {agent.sessions.map((session) => (
+                  <div
+                    key={session.id}
+                    className="flex items-center cursor-pointer transition-all duration-150"
+                    style={{
+                      gap: 6,
+                      padding: '5px 8px',
+                      borderRadius: 4,
+                      marginBottom: 1,
+                      fontSize: 11,
+                      color: selectedSession === session.name ? 'var(--accent-gold)' : 'var(--text-secondary)',
+                      background: selectedSession === session.name ? 'rgba(212, 168, 83, 0.12)' : 'transparent',
+                    }}
+                    onClick={(e) => handleSessionClick(e, agent, session)}
+                  >
                     <div
-                      key={session.id}
-                      className="flex items-center gap-2 py-1.5 px-4 cursor-pointer transition-all duration-150"
+                      className="flex-shrink-0"
                       style={{
-                        color: selectedSession === session.name ? 'var(--accent-gold)' : 'var(--text-secondary)',
-                        background: selectedSession === session.name ? 'var(--bg-active)' : 'transparent',
+                        width: 4,
+                        height: 4,
+                        borderRadius: '50%',
+                        background: selectedSession === session.name ? 'var(--accent-gold)' : 'currentColor',
+                        opacity: selectedSession === session.name ? 1 : 0.6,
                       }}
-                      onClick={(e) => handleSessionClick(e, agent, session)}
-                    >
-                      <span className="flex-1 text-[13px] truncate">{session.name}</span>
-                      <span className="text-[11px] text-[var(--text-muted)] flex-shrink-0">{session.time}</span>
-                    </div>
-                  ))}
-                </div>
+                    />
+                    <span className="flex-1 min-w-0 truncate">{session.name}</span>
+                    <span className="flex-shrink-0" style={{ fontSize: 9, opacity: 0.7 }}>{session.time}</span>
+                  </div>
+                ))}
 
                 {/* New Session Button */}
                 <div
-                  className="flex items-center gap-1 py-1.5 px-4 cursor-pointer text-[11px] opacity-0 hover:opacity-100 transition-opacity"
-                  style={{ color: 'var(--text-muted)' }}
+                  className="flex items-center cursor-pointer opacity-0 hover:opacity-100 transition-opacity"
+                  style={{
+                    gap: 4,
+                    padding: '4px 8px',
+                    borderRadius: 4,
+                    fontSize: 10,
+                    color: 'var(--text-secondary)',
+                  }}
                   onClick={(e) => {
                     e.stopPropagation();
                     // TODO: 新建会话

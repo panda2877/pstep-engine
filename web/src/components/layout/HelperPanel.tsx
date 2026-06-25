@@ -33,19 +33,19 @@ export function HelperPanel({ isOpen, onClose, isMobile = false }: HelperPanelPr
         width: isMobile ? '100%' : 'var(--panel-width)',
         minWidth: isMobile ? '100%' : 'var(--panel-width)',
         maxWidth: isMobile ? '100%' : 'var(--panel-width)',
-        background: 'var(--bg-primary)',
-        borderLeft: isMobile ? 'none' : '1px solid var(--border-main)',
+        background: 'var(--bg-secondary)',
+        borderLeft: isMobile ? 'none' : '1px solid var(--border-card)',
       }}
     >
       {/* Header */}
       <div
-        className="flex items-center justify-between px-4"
+        className="flex items-center justify-between"
         style={{
-          height: 48,
-          borderBottom: '1px solid var(--border-main)',
+          padding: '10px 14px',
+          borderBottom: '1px solid var(--border-card)',
         }}
       >
-        <span className="text-[13px] font-semibold">{tabTitles[activeTab]}</span>
+        <span className="font-medium" style={{ fontSize: 12 }}>{tabTitles[activeTab]}</span>
         <button
           className="flex items-center justify-center hover:opacity-80"
           style={{
@@ -59,7 +59,7 @@ export function HelperPanel({ isOpen, onClose, isMobile = false }: HelperPanelPr
           }}
           onClick={onClose}
         >
-          <svg className="icon icon-sm" viewBox="0 0 24 24">
+          <svg className="icon" viewBox="0 0 24 24" style={{ width: 14, height: 14 }}>
             <line x1="18" y1="6" x2="6" y2="18" />
             <line x1="6" y1="6" x2="18" y2="18" />
           </svg>
@@ -69,16 +69,18 @@ export function HelperPanel({ isOpen, onClose, isMobile = false }: HelperPanelPr
       {/* Tabs */}
       <div
         className="flex"
-        style={{ borderBottom: '1px solid var(--border-main)' }}
+        style={{ borderBottom: '1px solid var(--border-card)' }}
       >
         {(['user', 'soul', 'memory'] as TabType[]).map((tab) => (
           <button
             key={tab}
-            className="flex-1 py-2.5 text-xs font-medium transition-all"
+            className="flex-1 transition-all"
             style={{
+              padding: 8,
+              fontSize: 11,
               border: 'none',
               background: 'transparent',
-              color: activeTab === tab ? 'var(--accent-gold)' : 'var(--text-muted)',
+              color: activeTab === tab ? 'var(--accent-gold)' : 'var(--text-secondary)',
               cursor: 'pointer',
               borderBottom: activeTab === tab ? '2px solid var(--accent-gold)' : '2px solid transparent',
               marginBottom: -1,
@@ -91,7 +93,7 @@ export function HelperPanel({ isOpen, onClose, isMobile = false }: HelperPanelPr
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
+      <div className="flex-1 overflow-y-auto" style={{ padding: 10 }}>
         {activeTab === 'user' && <UserTab />}
         {activeTab === 'soul' && <SoulTab />}
         {activeTab === 'memory' && <MemoryTab />}
@@ -103,23 +105,25 @@ export function HelperPanel({ isOpen, onClose, isMobile = false }: HelperPanelPr
 function UserTab() {
   return (
     <div
-      className="p-3 rounded-lg mb-2"
+      className="rounded-lg"
       style={{
+        padding: '10px 12px',
+        marginBottom: 8,
         background: 'var(--bg-card)',
         border: '1px solid var(--border-card)',
       }}
     >
       <div
-        className="text-[10px] mb-1.5 flex items-center gap-1.5"
-        style={{ color: 'var(--text-muted)' }}
+        className="flex items-center"
+        style={{ fontSize: 10, marginBottom: 6, gap: 6, color: 'var(--text-secondary)' }}
       >
-        <svg className="icon icon-sm" viewBox="0 0 24 24">
+        <svg className="icon" viewBox="0 0 24 24" style={{ width: 14, height: 14 }}>
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
           <circle cx="12" cy="7" r="4" />
         </svg>
         User Profile
       </div>
-      <pre className="text-xs leading-relaxed whitespace-pre-wrap font-sans">
+      <pre className="whitespace-pre-wrap font-sans" style={{ fontSize: 12, lineHeight: 1.5 }}>
 {`**姓名**: 老大
 **职业**: 项目管理（深圳）
 **特点**: 按调用次数付费
@@ -132,22 +136,24 @@ function UserTab() {
 function SoulTab() {
   return (
     <div
-      className="p-3 rounded-lg mb-2"
+      className="rounded-lg"
       style={{
+        padding: '10px 12px',
+        marginBottom: 8,
         background: 'var(--bg-card)',
         border: '1px solid var(--border-card)',
       }}
     >
       <div
-        className="text-[10px] mb-1.5 flex items-center gap-1.5"
-        style={{ color: 'var(--text-muted)' }}
+        className="flex items-center"
+        style={{ fontSize: 10, marginBottom: 6, gap: 6, color: 'var(--text-secondary)' }}
       >
-        <svg className="icon icon-sm" viewBox="0 0 24 24">
+        <svg className="icon" viewBox="0 0 24 24" style={{ width: 14, height: 14 }}>
           <path d="M12 2a9 9 0 0 0-9 9c0 3.6 2.4 6.5 6 8.5V22h6v-2.5c3.6-2 6-4.9 6-8.5a9 9 0 0 0-9-9z" />
         </svg>
         Soul Definition
       </div>
-      <pre className="text-xs leading-relaxed whitespace-pre-wrap font-sans">
+      <pre className="whitespace-pre-wrap font-sans" style={{ fontSize: 12, lineHeight: 1.5 }}>
 {`**角色**: 需求/创意专家
 **性格**: 傲娇、创意十足
 **职责**: 接收想法、可行性讨论
@@ -175,23 +181,25 @@ function MemoryTab() {
 function MemoryItem({ id, content }: { id: string; content: string }) {
   return (
     <div
-      className="p-3 rounded-lg mb-2"
+      className="rounded-lg"
       style={{
+        padding: '10px 12px',
+        marginBottom: 8,
         background: 'var(--bg-card)',
         border: '1px solid var(--border-card)',
       }}
     >
       <div
-        className="text-[10px] mb-1.5 flex items-center gap-1.5"
-        style={{ color: 'var(--text-muted)' }}
+        className="flex items-center"
+        style={{ fontSize: 10, marginBottom: 6, gap: 6, color: 'var(--text-secondary)' }}
       >
-        <svg className="icon icon-sm" viewBox="0 0 24 24">
+        <svg className="icon" viewBox="0 0 24 24" style={{ width: 14, height: 14 }}>
           <path d="M12 2a9 9 0 0 0-9 9c0 3.6 2.4 6.5 6 8.5V22h6v-2.5c3.6-2 6-4.9 6-8.5a9 9 0 0 0-9-9z" />
           <path d="M12 2v4" />
         </svg>
         Memory {id}
       </div>
-      <div className="text-xs leading-relaxed whitespace-pre-wrap">
+      <div className="whitespace-pre-wrap" style={{ fontSize: 12, lineHeight: 1.5 }}>
         {content.split('\n').map((line, i) => (
           <span key={i}>
             {line}

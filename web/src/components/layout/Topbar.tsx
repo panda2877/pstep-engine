@@ -11,22 +11,24 @@ interface TopbarProps {
 export function Topbar({ selectedAgent: _selectedAgent, selectedSession: _selectedSession }: TopbarProps) {
   return (
     <div
-      className="flex items-center justify-between px-3 flex-shrink-0 gap-4"
+      className="flex items-center justify-between flex-shrink-0"
       style={{
         height: 'var(--topbar-height)',
         minHeight: 'var(--topbar-height)',
         background: 'var(--bg-secondary)',
-        borderBottom: '1px solid var(--border-main)',
+        borderBottom: '1px solid var(--border-card)',
+        padding: '0 16px',
+        gap: 16,
       }}
     >
       {/* Left Section */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center" style={{ gap: 12 }}>
         {/* Brand */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center" style={{ gap: 8 }}>
           <PstepLogo />
           <span
-            className="text-[13px] font-semibold tracking-wide"
-            style={{ color: 'var(--text-primary)' }}
+            className="font-semibold"
+            style={{ fontSize: 14, color: 'var(--text-primary)', letterSpacing: 0.3 }}
           >
             pstep
           </span>
@@ -34,12 +36,12 @@ export function Topbar({ selectedAgent: _selectedAgent, selectedSession: _select
 
         {/* Divider */}
         <div
-          className="w-px h-5"
-          style={{ background: 'var(--border-card)' }}
+          className="w-px"
+          style={{ height: 20, background: 'var(--border-card)' }}
         />
 
         {/* Session Info */}
-        <div className="hidden sm:flex items-center gap-3">
+        <div className="hidden sm:flex items-center" style={{ gap: 12 }}>
           <SessionInfoItem label="模型" value="minimax-main" highlight />
           <SessionInfoItem label="上下文" value="2,847 / 32,768" />
           <MilestoneBadge milestone="MS7" progress={25} />
@@ -47,7 +49,7 @@ export function Topbar({ selectedAgent: _selectedAgent, selectedSession: _select
       </div>
 
       {/* Right Section */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center" style={{ gap: 16 }}>
         <ConnectionStatus connected duration="8642" />
       </div>
     </div>
@@ -81,7 +83,7 @@ function SessionInfoItem({ label, value, highlight = false }: {
   highlight?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-1.5 text-[11px]" style={{ color: 'var(--text-secondary)' }}>
+    <div className="flex items-center text-[11px]" style={{ gap: 6, color: 'var(--text-secondary)' }}>
       <span className="opacity-70">{label}</span>
       <span
         className="font-medium"
@@ -99,16 +101,18 @@ function MilestoneBadge({ milestone, progress }: {
 }) {
   return (
     <div
-      className="flex items-center gap-2 px-2.5 py-1 rounded-xl text-[11px]"
+      className="flex items-center rounded-xl text-[11px]"
       style={{
+        gap: 8,
+        padding: '4px 10px',
         background: 'var(--bg-card)',
         border: '1px solid var(--border-card)',
       }}
     >
       <span>{milestone}</span>
       <div
-        className="w-[60px] h-1 rounded-full overflow-hidden"
-        style={{ background: 'var(--border-card)' }}
+        className="rounded-full overflow-hidden"
+        style={{ width: 60, height: 4, background: 'var(--border-card)' }}
       >
         <div
           className="h-full rounded-full transition-all duration-300"
@@ -129,12 +133,14 @@ function ConnectionStatus({ connected, duration }: {
 }) {
   return (
     <div
-      className="flex items-center gap-1.5 text-[11px]"
-      style={{ color: 'var(--text-secondary)' }}
+      className="flex items-center text-[11px]"
+      style={{ gap: 6, color: 'var(--text-secondary)' }}
     >
       <div
-        className="w-1.5 h-1.5 rounded-full"
+        className="rounded-full"
         style={{
+          width: 6,
+          height: 6,
           background: connected ? 'var(--accent-green)' : 'var(--text-secondary)',
         }}
       />

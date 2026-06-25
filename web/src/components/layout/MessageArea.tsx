@@ -65,14 +65,14 @@ export function MessageArea({
     <div className="flex flex-col flex-1 min-w-0" style={{ background: 'var(--bg-primary)' }}>
       {/* Message Header */}
       <div
-        className="flex items-center justify-between px-5 py-3 flex-shrink-0"
+        className="flex items-center justify-between flex-shrink-0"
         style={{
-          height: 48,
-          borderBottom: '1px solid var(--border-main)',
-          background: 'var(--bg-primary)',
+          padding: '10px 16px',
+          borderBottom: '1px solid var(--border-card)',
+          background: 'var(--bg-secondary)',
         }}
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center" style={{ gap: 12 }}>
           {/* Back Button (Mobile) */}
           <button
             className="md:hidden flex items-center justify-center"
@@ -92,23 +92,32 @@ export function MessageArea({
           </button>
 
           {/* Current Agent */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center" style={{ gap: 8 }}>
             <div
-              className="w-7 h-7 rounded-full flex items-center justify-center"
-              style={{ background: 'var(--bg-card)' }}
+              className="flex items-center justify-center"
+              style={{
+                width: 24,
+                height: 24,
+                borderRadius: '50%',
+                background: 'var(--bg-card)',
+              }}
             >
-              <span className="text-[14px] font-semibold">
+              <span className="font-semibold" style={{ fontSize: 10 }}>
                 {selectedAgent.charAt(0)}
               </span>
             </div>
-            <span className="text-[14px] font-semibold">{selectedAgent}</span>
+            <span className="font-medium" style={{ fontSize: 13 }}>{selectedAgent}</span>
           </div>
 
           {/* Current Session */}
           <span
-            className="text-[12px] px-2 py-0.5 rounded-xl"
+            className="rounded-xl"
             style={{
-              color: 'var(--text-muted)',
+              fontSize: 11,
+              padding: '3px 8px',
+              color: 'var(--text-secondary)',
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border-card)',
             }}
           >
             {selectedSession}
@@ -116,14 +125,18 @@ export function MessageArea({
 
           {/* Memory Badge */}
           <button
-            className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-xl cursor-pointer transition-all"
+            className="flex items-center rounded-xl cursor-pointer transition-all"
             style={{
+              fontSize: 10,
+              padding: '3px 8px',
+              gap: 4,
               color: 'var(--accent-green)',
               background: 'rgba(34, 197, 94, 0.1)',
+              border: '1px solid transparent',
             }}
             title="点击查看记忆详情"
           >
-            <svg className="icon icon-sm" viewBox="0 0 24 24">
+            <svg style={{ width: 12, height: 12 }} viewBox="0 0 24 24">
               <path d="M12 2a9 9 0 0 0-9 9c0 3.6 2.4 6.5 6 8.5V22h6v-2.5c3.6-2 6-4.9 6-8.5a9 9 0 0 0-9-9z" />
               <path d="M12 2v4" />
             </svg>
@@ -132,12 +145,12 @@ export function MessageArea({
         </div>
 
         {/* Header Actions */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center" style={{ gap: 4 }}>
           <button
             className="flex items-center justify-center"
             style={{
-              width: 32,
-              height: 32,
+              width: 28,
+              height: 28,
               borderRadius: 'var(--radius-btn)',
               border: 'none',
               background: 'transparent',
@@ -146,7 +159,7 @@ export function MessageArea({
             }}
             title="搜索会话"
           >
-            <svg className="icon icon-sm" viewBox="0 0 24 24">
+            <svg className="icon" viewBox="0 0 24 24" style={{ width: 14, height: 14 }}>
               <circle cx="11" cy="11" r="8" />
               <path d="m21 21-4.35-4.35" />
             </svg>
@@ -154,8 +167,8 @@ export function MessageArea({
           <button
             className="flex items-center justify-center"
             style={{
-              width: 32,
-              height: 32,
+              width: 28,
+              height: 28,
               borderRadius: 'var(--radius-btn)',
               border: 'none',
               background: 'transparent',
@@ -165,7 +178,7 @@ export function MessageArea({
             title="展开辅助面板"
             onClick={onToggleHelper}
           >
-            <svg className="icon icon-sm" viewBox="0 0 24 24">
+            <svg className="icon" viewBox="0 0 24 24" style={{ width: 14, height: 14 }}>
               <rect x="3" y="3" width="18" height="18" rx="2" />
               <line x1="15" y1="3" x2="15" y2="21" />
             </svg>
@@ -174,11 +187,11 @@ export function MessageArea({
       </div>
 
       {/* Message List */}
-      <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-4">
+      <div className="flex-1 overflow-y-auto flex flex-col" style={{ padding: '16px 20px', gap: 12 }}>
         {/* Date Separator */}
         <div
-          className="text-center text-[11px] py-2 relative"
-          style={{ color: 'var(--text-muted)' }}
+          className="text-center relative"
+          style={{ color: 'var(--text-secondary)', fontSize: 10, padding: '8px 0' }}
         >
           <span
             className="absolute left-0 top-1/2 h-px"
@@ -201,28 +214,31 @@ export function MessageArea({
         {messages.map((msg) => (
           <div
             key={msg.id}
-            className={`flex flex-col gap-1 max-w-[75%] ${
-              msg.role === 'user' ? 'self-end items-end ml-auto' : 'self-start items-start'
-            }`}
+            className="flex"
+            style={{
+              gap: 10,
+              maxWidth: '75%',
+              flexDirection: msg.role === 'user' ? 'row-reverse' : 'row',
+              alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
+            }}
           >
             <div
-              className="px-3.5 py-2.5 rounded-lg text-[14px] leading-relaxed break-words"
+              className="rounded-lg break-words"
               style={{
+                padding: '10px 14px',
+                fontSize: 13,
+                lineHeight: 1.6,
                 background: 'var(--bg-card)',
-                border: '1px solid var(--border-main)',
                 color: 'var(--text-primary)',
-                borderRadius: msg.role === 'agent'
-                  ? '4px var(--radius-lg) var(--radius-lg) var(--radius-lg)'
-                  : 'var(--radius-lg) var(--radius-lg) 4px var(--radius-lg)',
+                borderBottomLeftRadius: msg.role === 'agent' ? 4 : undefined,
+                borderBottomRightRadius: msg.role === 'user' ? 4 : undefined,
               }}
             >
               <pre className="whitespace-pre-wrap font-sans">{msg.content}</pre>
             </div>
             <div
-              className={`text-[11px] px-1 ${
-                msg.role === 'user' ? 'text-right' : ''
-              }`}
-              style={{ color: 'var(--text-muted)' }}
+              className={`flex-shrink-0 ${msg.role === 'user' ? 'text-right' : ''}`}
+              style={{ fontSize: 9, color: 'var(--text-secondary)', padding: '2px 4px 0' }}
             >
               {msg.time}
             </div>
@@ -232,92 +248,116 @@ export function MessageArea({
 
       {/* Input Area */}
       <div
-        className="px-5 pb-4 pt-3 flex-shrink-0"
+        className="flex-shrink-0"
         style={{
-          borderTop: '1px solid var(--border-main)',
-          background: 'var(--bg-primary)',
+          padding: '10px 12px 12px',
+          borderTop: '1px solid var(--border-card)',
+          background: 'var(--bg-secondary)',
         }}
       >
         {/* Toolbar */}
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-1">
+        <div className="flex items-center justify-between" style={{ marginBottom: 8 }}>
+          <div className="flex items-center" style={{ gap: 6 }}>
             {/* Attachment Button */}
             <button
-              className="flex items-center gap-1 py-1 px-2.5 rounded-lg text-[12px]"
+              className="flex items-center cursor-pointer transition-all"
               style={{
-                border: 'none',
-                background: 'transparent',
+                gap: 4,
+                padding: '4px 8px 4px 4px',
+                borderRadius: 8,
+                border: '1px solid var(--border-card)',
+                background: 'var(--bg-card)',
                 color: 'var(--text-secondary)',
-                cursor: 'pointer',
+                fontSize: 11,
               }}
             >
-              <svg className="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: 14, height: 14 }}>
-                <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-              </svg>
+              <span
+                className="flex items-center justify-center"
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: 4,
+                  background: 'rgba(212, 168, 83, 0.15)',
+                }}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent-gold)" strokeWidth="1.5" style={{ width: 14, height: 14 }}>
+                  <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                </svg>
+              </span>
               <span>附件</span>
             </button>
 
             {/* New Session Button */}
             <button
-              className="flex items-center gap-1 py-1 px-2.5 rounded-lg text-[12px]"
+              className="flex items-center cursor-pointer transition-all"
               style={{
-                border: 'none',
-                background: 'transparent',
+                gap: 4,
+                padding: '4px 8px 4px 4px',
+                borderRadius: 8,
+                border: '1px solid var(--border-card)',
+                background: 'var(--bg-card)',
                 color: 'var(--text-secondary)',
-                cursor: 'pointer',
+                fontSize: 11,
               }}
             >
-              <svg className="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: 14, height: 14 }}>
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
+              <span
+                className="flex items-center justify-center"
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: 4,
+                  background: 'rgba(212, 168, 83, 0.15)',
+                }}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent-gold)" strokeWidth="1.5" style={{ width: 14, height: 14 }}>
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+              </span>
               <span>新建</span>
             </button>
           </div>
         </div>
 
         {/* Input */}
-        <div
-          className="flex gap-2 items-end"
-          style={{
-            background: 'var(--bg-secondary)',
-            border: '1px solid var(--border-main)',
-            borderRadius: 'var(--radius-lg)',
-            padding: '8px 12px',
-          }}
-        >
-          <textarea
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="输入消息..."
-            rows={1}
-            className="flex-1 resize-none outline-none border-none"
-            style={{
-              minHeight: 22,
-              maxHeight: 120,
-              background: 'transparent',
-              color: 'var(--text-primary)',
-              fontSize: 14,
-              lineHeight: 1.5,
-            }}
-          />
+        <div className="flex items-end" style={{ gap: 8 }}>
+          <div className="flex-1 relative">
+            <textarea
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="输入消息..."
+              rows={1}
+              className="w-full resize-none outline-none"
+              style={{
+                minHeight: 44,
+                maxHeight: 120,
+                padding: '12px 14px',
+                borderRadius: 14,
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                background: 'var(--bg-card)',
+                color: 'var(--text-primary)',
+                fontSize: 13,
+                fontFamily: 'inherit',
+                lineHeight: 1.5,
+              }}
+            />
+          </div>
           {/* Send Button */}
           <button
             className="flex items-center justify-center flex-shrink-0"
             style={{
-              width: 32,
-              height: 32,
-              borderRadius: 8,
+              width: 36,
+              height: 36,
+              borderRadius: 10,
               border: 'none',
               background: 'var(--accent-gold)',
-              color: 'var(--bg-deep)',
               cursor: 'pointer',
               transition: 'all 0.2s',
             }}
             onClick={handleSend}
           >
-            <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" strokeWidth="2" style={{ width: 16, height: 16 }}>
               <line x1="22" y1="2" x2="11" y2="13" />
               <polygon points="22 2 15 22 11 13 2 9 22 2" />
             </svg>
