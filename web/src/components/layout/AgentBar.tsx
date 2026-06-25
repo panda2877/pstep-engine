@@ -207,7 +207,7 @@ export function AgentBar({
             {/* Sessions */}
             {expandedAgent === agent.name && (
               <div
-                className="hidden lg:block"
+                className="block"
                 style={{
                   padding: '4px 0 6px 22px',
                   marginLeft: 12,

@@ -30,15 +30,6 @@
   --panel-width: 26%;
 }
 
-/* ===== Responsive Breakpoints ===== */
-/* 窄屏（<1024px）：AgentBar 收成图标条，session 列表可点开抽屉 */
-@media (max-width: 1023px) {
-  :root {
-    --agent-width: 56px;
-    --panel-width: clamp(200px, 25%, 260px);
-  }
-}
-
 /* ===== Base Styles ===== */
 * {
   box-sizing: border-box;
