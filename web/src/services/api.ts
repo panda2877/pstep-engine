@@ -5,9 +5,10 @@
 const API_BASE = import.meta.env.VITE_API_BASE || '';
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
-  const isGet = !options?.method || options.method === 'GET';
+  const method = options?.method?.toUpperCase() || 'GET';
+  const hasBody = method === 'POST' || method === 'PUT';
   const res = await fetch(`${API_BASE}${url}`, {
-    headers: isGet ? {} : { 'Content-Type': 'application/json', ...options?.headers },
+    headers: hasBody ? { 'Content-Type': 'application/json', ...options?.headers } : { ...options?.headers },
     ...options,
   });
   if (!res.ok) {
