@@ -1,6 +1,7 @@
 /**
  * HelperPanel 组件
  * 右侧辅助面板：User、Soul、Memory 标签页
+ * 带收起/展开动画（0.3s ease 过渡）
  */
 
 import { useState } from 'react';
@@ -22,21 +23,65 @@ export function HelperPanel({ isOpen, onClose, isMobile = false }: HelperPanelPr
     memory: 'LanceDB Memory',
   };
 
-  if (!isOpen && !isMobile) return null;
+  // 桌面端始终渲染（用于 CSS 过渡动画），移动端用 show class
+  if (isMobile) {
+    if (!isOpen) return null;
+    return (
+      <div
+        className="fixed inset-0 z-50 flex flex-col transition-all duration-300"
+        style={{
+          width: '66.67%',
+          background: 'var(--bg-secondary)',
+        }}
+      >
+        <PanelContent
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          tabTitles={tabTitles}
+          onClose={onClose}
+        />
+      </div>
+    );
+  }
 
+  // 桌面端：始终渲染，用 collapsed class 控制动画
   return (
     <div
-      className={`${
-        isMobile ? 'fixed inset-0 z-50' : 'hidden md:flex'
-      } flex-col flex-shrink-0 transition-all duration-300`}
+      className="hidden md:flex flex-col flex-shrink-0 overflow-hidden"
       style={{
-        width: isMobile ? '100%' : 'var(--panel-width)',
-        minWidth: isMobile ? '100%' : 'var(--panel-width)',
-        maxWidth: isMobile ? '100%' : 'var(--panel-width)',
+        width: isOpen ? 'var(--panel-width)' : 0,
+        minWidth: isOpen ? 'var(--panel-width)' : 0,
+        maxWidth: isOpen ? 'var(--panel-width)' : 0,
         background: 'var(--bg-secondary)',
-        borderLeft: isMobile ? 'none' : '1px solid var(--border-card)',
+        borderLeft: isOpen ? '1px solid var(--border-card)' : 'none',
+        transition: 'all 0.3s ease',
       }}
     >
+      {isOpen && (
+        <PanelContent
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          tabTitles={tabTitles}
+          onClose={onClose}
+        />
+      )}
+    </div>
+  );
+}
+
+function PanelContent({
+  activeTab,
+  setActiveTab,
+  tabTitles,
+  onClose,
+}: {
+  activeTab: TabType;
+  setActiveTab: (tab: TabType) => void;
+  tabTitles: Record<TabType, string>;
+  onClose: () => void;
+}) {
+  return (
+    <>
       {/* Header */}
       <div
         className="flex items-center justify-between"
@@ -98,7 +143,7 @@ export function HelperPanel({ isOpen, onClose, isMobile = false }: HelperPanelPr
         {activeTab === 'soul' && <SoulTab />}
         {activeTab === 'memory' && <MemoryTab />}
       </div>
-    </div>
+    </>
   );
 }
 
