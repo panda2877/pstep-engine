@@ -114,6 +114,12 @@ export const sessionApi = {
     request<{ status: string }>(`/api/sessions/${id}`, {
       method: 'DELETE',
     }),
+
+  update: (id: string, data: { title?: string }) =>
+    request<Session>(`/api/sessions/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
 };
 
 // ============================================================================

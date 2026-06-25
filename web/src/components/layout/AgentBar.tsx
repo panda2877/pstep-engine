@@ -3,9 +3,9 @@
  * 左侧 Agent 列表：显示多个 Agent 和会话
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAppStore } from '../../stores/appStore';
-import type { Agent, Session } from '../../services/api';
+import { sessionApi, type Agent, type Session } from '../../services/api';
 
 interface AgentBarProps {
   selectedAgent: string;
@@ -24,6 +24,13 @@ export function AgentBar({
   const [expandedAgent, setExpandedAgent] = useState<string | null>(selectedAgent);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
+  // 右键菜单状态
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; session: Session } | null>(null);
+  // 重命名状态
+  const [renamingSession, setRenamingSession] = useState<Session | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const renameInputRef = useRef<HTMLInputElement>(null);
+
   // 加载项目和 Agent 列表
   useEffect(() => {
     fetchProjects();
@@ -37,16 +44,31 @@ export function AgentBar({
     }
   }, [state.selectedAgentId, fetchSessions]);
 
+  // 点击其他地方关闭右键菜单
+  useEffect(() => {
+    if (!contextMenu) return;
+    const handler = () => setContextMenu(null);
+    document.addEventListener('click', handler);
+    document.addEventListener('contextmenu', handler);
+    return () => {
+      document.removeEventListener('click', handler);
+      document.removeEventListener('contextmenu', handler);
+    };
+  }, [contextMenu]);
+
+  // 重命名输入框自动聚焦
+  useEffect(() => {
+    if (renamingSession && renameInputRef.current) {
+      renameInputRef.current.focus();
+      renameInputRef.current.select();
+    }
+  }, [renamingSession]);
+
   const handleAgentClick = (agent: Agent) => {
-    // 折叠/展开
     const newExpanded = expandedAgent === agent.name ? null : agent.name;
     setExpandedAgent(newExpanded);
-
-    // 选中 Agent
     selectAgent(agent.id);
     onAgentSelect(agent.name);
-
-    // 默认选中第一个会话
     if (newExpanded && state.sessions.length > 0) {
       onSessionSelect(state.sessions[0].id);
     }
@@ -58,6 +80,28 @@ export function AgentBar({
       selectAgent(state.selectedAgentId);
     }
     onSessionSelect(session.id);
+  };
+
+  const handleSessionContextMenu = (e: React.MouseEvent, session: Session) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({ x: e.clientX, y: e.clientY, session });
+  };
+
+  const handleRename = async () => {
+    if (!renamingSession || !renameValue.trim()) return;
+    try {
+      await sessionApi.update(renamingSession.id, { title: renameValue.trim() });
+      // 刷新会话列表
+      if (state.selectedAgentId) {
+        await fetchSessions(state.selectedAgentId);
+      }
+    } catch (err) {
+      console.error('[AgentBar] Failed to rename session:', err);
+    } finally {
+      setRenamingSession(null);
+      setRenameValue('');
+    }
   };
 
   const formatTime = (timestamp: number) => {
@@ -229,7 +273,7 @@ export function AgentBar({
                     state.sessions.map((session) => (
                       <div
                         key={session.id}
-                        className="flex items-center cursor-pointer transition-all duration-150"
+                        className="flex items-center cursor-pointer transition-all duration-150 group"
                         style={{
                           gap: 6,
                           padding: '5px 8px',
@@ -240,6 +284,7 @@ export function AgentBar({
                           background: selectedSession === session.id ? 'rgba(212, 168, 83, 0.12)' : 'transparent',
                         }}
                         onClick={(e) => handleSessionClick(e, session)}
+                        onContextMenu={(e) => handleSessionContextMenu(e, session)}
                       >
                         <div
                           className="flex-shrink-0"
@@ -294,11 +339,166 @@ export function AgentBar({
         )}
       </div>
 
+      {/* 右键菜单 */}
+      {contextMenu && (
+        <div
+          style={{
+            position: 'fixed',
+            left: contextMenu.x,
+            top: contextMenu.y,
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border-card)',
+            borderRadius: 6,
+            padding: 4,
+            zIndex: 3000,
+            minWidth: 120,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div
+            style={{
+              padding: '6px 10px',
+              fontSize: 11,
+              color: 'var(--text-primary)',
+              cursor: 'pointer',
+              borderRadius: 4,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+            className="hover:bg-[var(--bg-hover)]"
+            onClick={() => {
+              setRenamingSession(contextMenu.session);
+              setRenameValue(contextMenu.session.title || '');
+              setContextMenu(null);
+            }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 12, height: 12 }}>
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+            </svg>
+            重命名
+          </div>
+          <div
+            style={{
+              padding: '6px 10px',
+              fontSize: 11,
+              color: '#ef4444',
+              cursor: 'pointer',
+              borderRadius: 4,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+            className="hover:bg-[var(--bg-hover)]"
+            onClick={async () => {
+              try {
+                await sessionApi.delete(contextMenu.session.id);
+                if (state.selectedAgentId) {
+                  await fetchSessions(state.selectedAgentId);
+                }
+              } catch (err) {
+                console.error('[AgentBar] Failed to delete session:', err);
+              }
+              setContextMenu(null);
+            }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 12, height: 12 }}>
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            </svg>
+            删除
+          </div>
+        </div>
+      )}
+
+      {/* 重命名弹窗 */}
+      {renamingSession && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 2000,
+          }}
+          onClick={() => setRenamingSession(null)}
+        >
+          <div
+            style={{
+              background: 'var(--bg-secondary)',
+              borderRadius: 12,
+              padding: 20,
+              width: 280,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 12 }}>
+              重命名会话
+            </h3>
+            <input
+              ref={renameInputRef}
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleRename();
+                if (e.key === 'Escape') setRenamingSession(null);
+              }}
+              placeholder="会话名称"
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                borderRadius: 6,
+                border: '1px solid var(--border-card)',
+                background: 'var(--bg-card)',
+                color: 'var(--text-primary)',
+                fontSize: 12,
+                outline: 'none',
+              }}
+            />
+            <div style={{ display: 'flex', gap: 8, marginTop: 12, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setRenamingSession(null)}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: 6,
+                  border: '1px solid var(--border-card)',
+                  background: 'transparent',
+                  color: 'var(--text-secondary)',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                }}
+              >
+                取消
+              </button>
+              <button
+                onClick={handleRename}
+                disabled={!renameValue.trim()}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: 6,
+                  border: 'none',
+                  background: 'var(--accent-gold)',
+                  color: '#1a1a1a',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  opacity: renameValue.trim() ? 1 : 0.5,
+                }}
+              >
+                确认
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Create Agent Modal */}
       {showCreateModal && (
-        <CreateAgentModal
-          onClose={() => setShowCreateModal(false)}
-        />
+        <CreateAgentModal onClose={() => setShowCreateModal(false)} />
       )}
     </div>
   );

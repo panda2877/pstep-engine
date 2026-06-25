@@ -173,6 +173,13 @@ export function createServer(options: EngineServerOptions = {}) {
     return { ...session, agent, status: 'ok', messages };
   });
 
+  server.put<{ Params: { id: string } }>('/api/sessions/:id', async (request) => {
+    const body = request.body as { title?: string };
+    const session = SessionDao.update(request.params.id, body);
+    if (!session) return { id: request.params.id, status: 'not_found' };
+    return { ...session, status: 'updated' };
+  });
+
   server.delete<{ Params: { id: string } }>('/api/sessions/:id', async (request) => {
     MessageDao.deleteBySession(request.params.id);
     const deleted = SessionDao.delete(request.params.id);
