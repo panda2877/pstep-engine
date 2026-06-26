@@ -330,13 +330,16 @@ export class Orchestrator {
 
       // 等待 Agent 完全结束
       await agentPromise;
+    } finally {
+      queue.close();
+      unsubscribe();
 
       // 保存本次对话消息（用于多轮上下文）
+      // 放在 finally 中确保：即使客户端断开导致 generator 被提前 return，
+      // 消息仍然会被持久化。
       if (this.options.saveMessages) {
         try {
           const toSave: HistoryEntry[] = [{ role: "user", content: userMessage }];
-          // 只保存最终 assistant 文本（message_end 收集），不是流式快照
-          // 多轮对话的 PSV 循环可能产生多个 assistant 消息，保留全部
           for (const content of finalAssistantContents) {
             if (content && content.trim().length > 0) {
               toSave.push({ role: "assistant", content });
@@ -344,14 +347,12 @@ export class Orchestrator {
           }
           if (toSave.length > 0) {
             await this.options.saveMessages(sessionId, toSave);
+            console.log(`[Orchestrator] saved ${toSave.length} messages for session ${sessionId}`);
           }
         } catch (err) {
           console.error("[Orchestrator] failed to save messages:", (err as Error).message);
         }
       }
-    } finally {
-      queue.close();
-      unsubscribe();
     }
   }
 
