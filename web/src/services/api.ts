@@ -217,6 +217,13 @@ export function createChatStream(
   onError: (err: Error) => void,
 ): () => void {
   const controller = new AbortController();
+  let done = false;
+
+  const safeDone = () => {
+    if (done) return;
+    done = true;
+    onDone();
+  };
 
   (async () => {
     try {
@@ -264,7 +271,7 @@ export function createChatStream(
           } else if (line === '' && eventData) {
             // 空行表示事件结束
             if (eventType === 'done') {
-              onDone();
+              safeDone();
               return;
             }
             if (eventType === 'message' || eventType === 'error') {
@@ -281,8 +288,16 @@ export function createChatStream(
         }
       }
 
-      // 流结束
-      onDone();
+      // 流结束（如果还有未处理的事件）
+      if (eventData) {
+        if (eventType !== 'done') {
+          try {
+            const data = JSON.parse(eventData) as SSEMessage;
+            onMessage(data);
+          } catch {}
+        }
+      }
+      safeDone();
     } catch (err: any) {
       if (err.name !== 'AbortError') {
         onError(err);
