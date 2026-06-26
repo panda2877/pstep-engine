@@ -90,6 +90,8 @@ export class Orchestrator {
       model: options.model ?? "sensenova",
       systemPrompt: options.systemPrompt,
       planSolveOptions: options.planSolveOptions ?? {},
+      loadHistory: options.loadHistory,
+      saveMessages: options.saveMessages,
     };
   }
 
