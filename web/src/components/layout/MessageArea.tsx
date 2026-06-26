@@ -85,9 +85,14 @@ export function MessageArea({
         sessionId,
         message: userMessage,
       },
-      // onMessage
+      // onMessage — 后端 yield 的 streaming 消息 type 为 'streaming'
       (msg: SSEMessage) => {
-        if (msg.type === 'content' && msg.content) {
+        if (msg.type === 'streaming' && !(msg as any).isToolCall && msg.content) {
+          // orchestrator 发送完整累积内容（非 delta），直接替换
+          accumulatedContent = msg.content;
+          setStreamingContent(accumulatedContent);
+        } else if (msg.type === 'content' && msg.content) {
+          // 兼容旧格式
           accumulatedContent += msg.content;
           setStreamingContent(accumulatedContent);
         } else if (msg.type === 'plan' && msg.content) {

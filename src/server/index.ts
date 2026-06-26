@@ -251,14 +251,9 @@ export function createServer(options: EngineServerOptions = {}) {
       // engine is initialized at server boot; this is a defensive no-op in
       // case the eager init failed earlier.
       await engine.initialize();
+      // 消息持久化由 orchestrator.saveMessages 在引擎结束后统一处理，
+      // 此处只做 SSE 转发，避免每条 streaming chunk 都写入 DB 导致重复。
       for await (const msg of engine.execute(message, projectId, actualSessionId)) {
-        const contentStr = typeof msg === 'object' && 'content' in msg ? String((msg as any).content ?? '') : '';
-        MessageDao.create({
-          sessionId: actualSessionId,
-          role: msg.role,
-          content: contentStr,
-          metadata: JSON.stringify({ type: (msg as any).type }),
-        });
         rawSse(reply, 'message', JSON.stringify(msg));
       }
       rawSse(reply, 'done', JSON.stringify({ type: 'done', sessionId: actualSessionId, messageCount: 1, totalSteps: 0, completedSteps: 0, summary: '引擎已就绪，规则注入完成' }));

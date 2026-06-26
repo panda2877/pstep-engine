@@ -203,6 +203,7 @@ export class Orchestrator {
             }
           }
           if (content) {
+            currentStreamingContent = content;
             queue.push({
               id: randomUUID(),
               role: "assistant",
@@ -341,7 +342,7 @@ export class Orchestrator {
               toSave.push({ role: "assistant", content });
             }
           }
-          if (toSave.length > 1) {
+          if (toSave.length > 0) {
             await this.options.saveMessages(sessionId, toSave);
           }
         } catch (err) {

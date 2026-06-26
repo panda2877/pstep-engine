@@ -189,7 +189,7 @@ export interface ChatRequest {
 }
 
 export interface SSEMessage {
-  type: 'plan' | 'step' | 'content' | 'done' | 'error';
+  type: 'plan' | 'step' | 'content' | 'streaming' | 'done' | 'error';
   content?: string;
   steps?: string[];
   totalSteps?: number;
@@ -204,6 +204,8 @@ export interface SSEMessage {
   message?: string;
   code?: string;
   done?: boolean;
+  isToolCall?: boolean;
+  isPartial?: boolean;
 }
 
 /**
