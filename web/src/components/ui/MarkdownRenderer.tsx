@@ -5,6 +5,7 @@
 
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { MermaidDiagram } from './MermaidDiagram';
 
 interface MarkdownRendererProps {
   content: string;
@@ -37,6 +38,12 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
                   {children}
                 </code>
               );
+            }
+
+            // Mermaid 图表渲染
+            if (match && match[1].toLowerCase() === 'mermaid') {
+              const code = String(children).replace(/\n$/, '');
+              return <MermaidDiagram code={code} />;
             }
 
             return (
