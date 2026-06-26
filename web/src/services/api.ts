@@ -249,6 +249,8 @@ export function createChatStream(
 
       const decoder = new TextDecoder();
       let buffer = '';
+      let eventType = '';
+      let eventData = '';
 
       while (true) {
         const { done, value } = await reader.read();
@@ -259,9 +261,6 @@ export function createChatStream(
         // 解析 SSE 事件
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';
-
-        let eventType = '';
-        let eventData = '';
 
         for (const line of lines) {
           if (line.startsWith('event: ')) {
