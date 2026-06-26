@@ -171,6 +171,7 @@ export class Orchestrator {
     const unsubscribe = agent.subscribe(async (event: AgentEvent) => {
       switch (event.type) {
         case "message_start":
+          console.log(`[Orchestrator] message_start: role=${(event.message as any)?.role}`);
           // PSV 循环中会穿插 user/tool 消息的 message_start。
           // 只有 assistant 的 message_start 才重置 currentStreamingContent，
           // 否则会清掉上一轮 assistant 还没被 message_end 收集的内容。
@@ -218,6 +219,7 @@ export class Orchestrator {
               }
             }
           }
+          console.log(`[Orchestrator] message_update: role=${(event.message as any)?.role}, contentLen=${content.length}, rawType=${typeof rawContent}, isArray=${Array.isArray(rawContent)}`);
           if (content) {
             currentStreamingContent = content;
             // 发送 allTurnsContent + 当前轮内容，前端无需自行累积
@@ -360,14 +362,17 @@ export class Orchestrator {
         });
 
       // 并发消费队列 — 实时 yield streaming 消息
+      let yieldCount = 0;
       while (true) {
         const msg = await queue.next();
         if (msg === null) {
           break;
         }
         yield msg;
+        yieldCount++;
       }
 
+      console.log(`[Orchestrator] queue drained, yielded ${yieldCount} messages`);
       // 等待 Agent 完全结束
       await agentPromise;
     } finally {
