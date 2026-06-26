@@ -7,6 +7,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { SearchModal } from './SearchModal';
 import { useAppStore } from '../../stores/appStore';
 import { sessionApi, createChatStream, type Message, type SSEMessage } from '../../services/api';
+import { MarkdownRenderer } from '../ui/MarkdownRenderer';
 
 interface MessageAreaProps {
   selectedAgent: string;
@@ -312,7 +313,11 @@ export function MessageArea({
                     borderBottomRightRadius: msg.role === 'user' ? 4 : undefined,
                   }}
                 >
-                  <pre className="whitespace-pre-wrap font-sans">{msg.content}</pre>
+                  {msg.role === 'user' ? (
+                    <pre className="whitespace-pre-wrap font-sans">{msg.content}</pre>
+                  ) : (
+                    <MarkdownRenderer content={msg.content} />
+                  )}
                 </div>
               </div>
             ))}
@@ -346,7 +351,7 @@ export function MessageArea({
                   }}
                 >
                   {streamingContent ? (
-                    <pre className="whitespace-pre-wrap font-sans">{streamingContent}</pre>
+                    <MarkdownRenderer content={streamingContent} />
                   ) : (
                     <div className="flex items-center gap-1" style={{ color: 'var(--text-secondary)' }}>
                       <span className="animate-pulse">●</span>
