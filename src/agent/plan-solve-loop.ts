@@ -297,7 +297,11 @@ export class PlanSolveLoop {
   // ============================================================================
 
   private containsPlanContent(content: string): boolean {
-    return /步骤|step|plan|拆解|分解|\d+\.\s/.test(content);
+    // 只匹配明确的"任务规划"信号，避免误把普通有序列表当成步骤
+    // 必须包含"规划/计划/拆解/分解"等关键词 + 至少 2 个编号步骤
+    const hasPlanKeyword = /(?:任务规划|执行计划|步骤规划|拆解方案|分解方案|实施计划|行动方案|工作计划|执行步骤|操作步骤)/i.test(content);
+    const hasMultipleNumberedSteps = (content.match(/\d+[.、]\s*\S/g) || []).length >= 2;
+    return hasPlanKeyword && hasMultipleNumberedSteps;
   }
 
   private extractSteps(content: string): PlanStep[] {
@@ -354,23 +358,7 @@ export class PlanSolveLoop {
       steps.push(this.finalizeStep(current));
     }
 
-    // 如果没解析出步骤，尝试按行拆分
-    if (steps.length === 0) {
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (trimmed && !trimmed.startsWith('#') && !trimmed.startsWith('-') && !trimmed.startsWith('*')) {
-          steps.push({
-            id: `step-${steps.length + 1}`,
-            title: trimmed.slice(0, 50),
-            description: trimmed,
-            status: 'pending' as const,
-            dependencies: [],
-            createdAt: Date.now(),
-          });
-        }
-      }
-    }
-
+    // 不做 fallback 按行拆分 — 避免把普通文本误当成步骤
     return steps;
   }
 
