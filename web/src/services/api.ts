@@ -119,6 +119,9 @@ export const sessionApi = {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
+
+  messages: (id: string) =>
+    request<{ messages: Message[]; agent?: Agent }>(`/api/sessions/${id}`),
 };
 
 // ============================================================================
@@ -174,7 +177,7 @@ export const memoryApi = {
 };
 
 // ============================================================================
-// Chat API (SSE)
+// Chat API (SSE via POST)
 // ============================================================================
 
 export interface ChatRequest {
@@ -203,39 +206,89 @@ export interface SSEMessage {
   done?: boolean;
 }
 
+/**
+ * 创建聊天流（使用 fetch + ReadableStream 读取 SSE）
+ * 返回 abort 函数用于取消请求
+ */
 export function createChatStream(
   params: ChatRequest,
   onMessage: (msg: SSEMessage) => void,
   onDone: () => void,
-  onError: (err: Event) => void,
+  onError: (err: Error) => void,
 ): () => void {
-  const query = new URLSearchParams();
-  query.set('projectId', params.projectId);
-  if (params.agentId) query.set('agentId', params.agentId);
-  if (params.sessionId) query.set('sessionId', params.sessionId);
-  query.set('message', params.message);
-  query.set('stream', String(params.stream ?? true));
+  const controller = new AbortController();
 
-  const eventSource = new EventSource(`${API_BASE}/api/chat?${query.toString()}`);
-
-  eventSource.addEventListener('message', (event) => {
+  (async () => {
     try {
-      const data = JSON.parse(event.data) as SSEMessage;
-      onMessage(data);
-    } catch (e) {
-      console.error('[Chat] Failed to parse SSE message:', e);
+      const res = await fetch(`${API_BASE}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId: params.projectId,
+          agentId: params.agentId,
+          sessionId: params.sessionId,
+          message: params.message,
+          stream: params.stream ?? true,
+        }),
+        signal: controller.signal,
+      });
+
+      if (!res.ok) {
+        throw new Error(`Chat API error: ${res.status}`);
+      }
+
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error('No response body');
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // 解析 SSE 事件
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        let eventType = '';
+        let eventData = '';
+
+        for (const line of lines) {
+          if (line.startsWith('event: ')) {
+            eventType = line.slice(7).trim();
+          } else if (line.startsWith('data: ')) {
+            eventData = line.slice(6);
+          } else if (line === '' && eventData) {
+            // 空行表示事件结束
+            if (eventType === 'done') {
+              onDone();
+              return;
+            }
+            if (eventType === 'message' || eventType === 'error') {
+              try {
+                const data = JSON.parse(eventData) as SSEMessage;
+                onMessage(data);
+              } catch (e) {
+                console.error('[Chat] Failed to parse SSE data:', e);
+              }
+            }
+            eventType = '';
+            eventData = '';
+          }
+        }
+      }
+
+      // 流结束
+      onDone();
+    } catch (err: any) {
+      if (err.name !== 'AbortError') {
+        onError(err);
+      }
     }
-  });
+  })();
 
-  eventSource.addEventListener('done', () => {
-    onDone();
-    eventSource.close();
-  });
-
-  eventSource.addEventListener('error', (err) => {
-    onError(err);
-    eventSource.close();
-  });
-
-  return () => eventSource.close();
+  return () => controller.abort();
 }

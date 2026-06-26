@@ -1,68 +1,145 @@
 /**
  * MessageArea 组件
- * 消息区域：消息列表、输入框
+ * 消息区域：消息列表、输入框、流式输出
  */
 
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { SearchModal } from './SearchModal';
+import { useAppStore } from '../../stores/appStore';
+import { sessionApi, createChatStream, type Message, type SSEMessage } from '../../services/api';
 
 interface MessageAreaProps {
   selectedAgent: string;
   selectedSession: string;
+  agentId?: string;
+  sessionId?: string;
+  projectId?: string;
   onToggleHelper: () => void;
-  /** 移动端：返回 Agent 列表 */
   onBack?: () => void;
 }
-
-interface Message {
-  id: string;
-  role: 'user' | 'agent';
-  content: string;
-  time: string;
-}
-
-// 临时使用静态数据
-const MOCK_MESSAGES: Message[] = [
-  {
-    id: '1',
-    role: 'agent',
-    content: '你好！我是紫灵 😏\n\n有什么想法想跟我聊聊的吗？我可以帮你：\n• 挖掘需求细节\n• 讨论技术方案\n• 输出需求文档',
-    time: '14:23:15',
-  },
-  {
-    id: '2',
-    role: 'user',
-    content: '我想做一个跨端Agent连接工具，帮我分析一下可行性？',
-    time: '14:23:30',
-  },
-  {
-    id: '3',
-    role: 'agent',
-    content: '好问题！我先看看你的服务器资源情况……\n\n发现一个好消息——api_server 已经在端口 8642 上运行了 🎉\n\n$ curl http://127.0.0.1:8642/health\n{"status": "ok", "platform": "hermes-agent"}\n\n这意味着你不需要任何后端开发，前端直接调就行！',
-    time: '14:23:45',
-  },
-];
 
 export function MessageArea({
   selectedAgent,
   selectedSession,
+  agentId,
+  sessionId,
+  projectId,
   onToggleHelper,
   onBack,
 }: MessageAreaProps) {
-  const [messages] = useState<Message[]>(MOCK_MESSAGES);
+  const { state, fetchSessions } = useAppStore();
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamingContent, setStreamingContent] = useState('');
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<(() => void) | null>(null);
 
-  const handleSend = () => {
-    if (!inputValue.trim()) return;
-    // TODO: 发送消息
-    console.log('Sending:', inputValue);
+  // 加载会话消息
+  useEffect(() => {
+    if (!sessionId) {
+      setMessages([]);
+      return;
+    }
+    setLoadingMessages(true);
+    sessionApi.messages(sessionId)
+      .then((res) => setMessages(res.messages || []))
+      .catch((err) => console.error('[MessageArea] Failed to load messages:', err))
+      .finally(() => setLoadingMessages(false));
+  }, [sessionId]);
+
+  // 自动滚动到底部
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, streamingContent]);
+
+  const handleSend = useCallback(async () => {
+    if (!inputValue.trim() || !projectId) return;
+    if (isStreaming) return;
+
+    const userMessage = inputValue.trim();
     setInputValue('');
-  };
+
+    // 添加用户消息
+    const userMsg: Message = {
+      id: `temp-${Date.now()}`,
+      sessionId: sessionId || '',
+      role: 'user',
+      content: userMessage,
+      createdAt: Date.now(),
+    };
+    setMessages((prev) => [...prev, userMsg]);
+
+    // 开始流式输出
+    setIsStreaming(true);
+    setStreamingContent('');
+
+    let accumulatedContent = '';
+    let currentSessionId = sessionId;
+
+    abortRef.current = createChatStream(
+      {
+        projectId,
+        agentId,
+        sessionId,
+        message: userMessage,
+      },
+      // onMessage
+      (msg: SSEMessage) => {
+        if (msg.type === 'content' && msg.content) {
+          accumulatedContent += msg.content;
+          setStreamingContent(accumulatedContent);
+        } else if (msg.type === 'plan' && msg.content) {
+          setStreamingContent(`🔄 ${msg.content}\n\n`);
+        } else if (msg.type === 'step') {
+          const statusIcon = msg.status === 'completed' ? '✅' : msg.status === 'failed' ? '❌' : '⏳';
+          setStreamingContent((prev) => `${prev}\n${statusIcon} ${msg.stepName || `步骤 ${msg.stepIndex}`}\n`);
+        } else if (msg.type === 'done') {
+          currentSessionId = msg.sessionId || currentSessionId;
+        }
+      },
+      // onDone
+      () => {
+        setIsStreaming(false);
+        setStreamingContent('');
+
+        // 添加 assistant 消息
+        if (accumulatedContent) {
+          const assistantMsg: Message = {
+            id: `temp-${Date.now()}`,
+            sessionId: currentSessionId || sessionId || '',
+            role: 'assistant',
+            content: accumulatedContent,
+            createdAt: Date.now(),
+          };
+          setMessages((prev) => [...prev, assistantMsg]);
+        }
+
+        // 如果是新会话，刷新会话列表
+        if (!sessionId && currentSessionId && state.selectedAgentId) {
+          fetchSessions(state.selectedAgentId);
+        }
+      },
+      // onError
+      (err) => {
+        console.error('[MessageArea] Stream error:', err);
+        setIsStreaming(false);
+        setStreamingContent('');
+      },
+    );
+  }, [inputValue, projectId, agentId, sessionId, isStreaming, fetchSessions, state.selectedAgentId]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.ctrlKey && e.key === 'Enter') {
       handleSend();
     }
+  };
+
+  const handleStop = () => {
+    abortRef.current?.();
+    setIsStreaming(false);
+    setStreamingContent('');
   };
 
   const [searchOpen, setSearchOpen] = useState(false);
@@ -132,26 +209,6 @@ export function MessageArea({
           >
             {selectedSession}
           </span>
-
-          {/* Memory Badge */}
-          <button
-            className="flex items-center rounded-xl cursor-pointer transition-all"
-            style={{
-              fontSize: 10,
-              padding: '3px 8px',
-              gap: 4,
-              color: 'var(--accent-green)',
-              background: 'rgba(34, 197, 94, 0.1)',
-              border: '1px solid transparent',
-            }}
-            title="点击查看记忆详情"
-          >
-            <svg style={{ width: 12, height: 12 }} viewBox="0 0 24 24">
-              <path d="M12 2a9 9 0 0 0-9 9c0 3.6 2.4 6.5 6 8.5V22h6v-2.5c3.6-2 6-4.9 6-8.5a9 9 0 0 0-9-9z" />
-              <path d="M12 2v4" />
-            </svg>
-            记忆已加载
-          </button>
         </div>
 
         {/* Header Actions */}
@@ -199,62 +256,106 @@ export function MessageArea({
 
       {/* Message List */}
       <div className="flex-1 overflow-y-auto flex flex-col" style={{ padding: '16px 20px', gap: 12 }}>
-        {/* Date Separator */}
-        <div
-          className="text-center relative"
-          style={{ color: 'var(--text-secondary)', fontSize: 10, padding: '8px 0' }}
-        >
-          <span
-            className="absolute left-0 top-1/2 h-px"
-            style={{
-              width: 'calc(50% - 50px)',
-              background: 'var(--border-card)',
-            }}
-          />
-          <span>今天</span>
-          <span
-            className="absolute right-0 top-1/2 h-px"
-            style={{
-              width: 'calc(50% - 50px)',
-              background: 'var(--border-card)',
-            }}
-          />
-        </div>
-
-        {/* Messages */}
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className="flex"
-            style={{
-              gap: 10,
-              maxWidth: '75%',
-              flexDirection: msg.role === 'user' ? 'row-reverse' : 'row',
-              alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
-            }}
-          >
-            <div
-              className="rounded-lg break-words"
-              style={{
-                padding: '10px 14px',
-                fontSize: 13,
-                lineHeight: 1.6,
-                background: 'var(--bg-card)',
-                color: 'var(--text-primary)',
-                borderBottomLeftRadius: msg.role === 'agent' ? 4 : undefined,
-                borderBottomRightRadius: msg.role === 'user' ? 4 : undefined,
-              }}
-            >
-              <pre className="whitespace-pre-wrap font-sans">{msg.content}</pre>
-            </div>
-            <div
-              className={`flex-shrink-0 ${msg.role === 'user' ? 'text-right' : ''}`}
-              style={{ fontSize: 9, color: 'var(--text-secondary)', padding: '2px 4px 0' }}
-            >
-              {msg.time}
-            </div>
+        {loadingMessages ? (
+          <div className="flex-1 flex items-center justify-center" style={{ color: 'var(--text-secondary)', fontSize: 12 }}>
+            加载消息...
           </div>
-        ))}
+        ) : messages.length === 0 && !isStreaming ? (
+          <div className="flex-1 flex flex-col items-center justify-center" style={{ color: 'var(--text-secondary)', fontSize: 12, gap: 8 }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: 40, height: 40, opacity: 0.3 }}>
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
+            <span>开始新的对话</span>
+          </div>
+        ) : (
+          <>
+            {messages.map((msg) => (
+              <div
+                key={msg.id}
+                className="flex"
+                style={{
+                  gap: 10,
+                  maxWidth: '85%',
+                  flexDirection: msg.role === 'user' ? 'row-reverse' : 'row',
+                  alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                }}
+              >
+                {msg.role !== 'user' && (
+                  <div
+                    className="flex items-center justify-center flex-shrink-0"
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: '50%',
+                      background: 'var(--bg-card)',
+                    }}
+                  >
+                    <span style={{ fontSize: 11, color: 'var(--text-primary)' }}>
+                      {selectedAgent.charAt(0)}
+                    </span>
+                  </div>
+                )}
+                <div
+                  className="rounded-lg break-words"
+                  style={{
+                    padding: '10px 14px',
+                    fontSize: 13,
+                    lineHeight: 1.6,
+                    background: msg.role === 'user' ? 'var(--accent-gold)' : 'var(--bg-card)',
+                    color: msg.role === 'user' ? '#1a1a1a' : 'var(--text-primary)',
+                    borderBottomLeftRadius: msg.role !== 'user' ? 4 : undefined,
+                    borderBottomRightRadius: msg.role === 'user' ? 4 : undefined,
+                  }}
+                >
+                  <pre className="whitespace-pre-wrap font-sans">{msg.content}</pre>
+                </div>
+              </div>
+            ))}
+
+            {/* 流式输出中 */}
+            {isStreaming && (
+              <div className="flex" style={{ gap: 10, maxWidth: '85%', alignSelf: 'flex-start' }}>
+                <div
+                  className="flex items-center justify-center flex-shrink-0"
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: '50%',
+                    background: 'var(--bg-card)',
+                  }}
+                >
+                  <span style={{ fontSize: 11, color: 'var(--text-primary)' }}>
+                    {selectedAgent.charAt(0)}
+                  </span>
+                </div>
+                <div
+                  className="rounded-lg break-words"
+                  style={{
+                    padding: '10px 14px',
+                    fontSize: 13,
+                    lineHeight: 1.6,
+                    background: 'var(--bg-card)',
+                    color: 'var(--text-primary)',
+                    borderBottomLeftRadius: 4,
+                    minHeight: 40,
+                  }}
+                >
+                  {streamingContent ? (
+                    <pre className="whitespace-pre-wrap font-sans">{streamingContent}</pre>
+                  ) : (
+                    <div className="flex items-center gap-1" style={{ color: 'var(--text-secondary)' }}>
+                      <span className="animate-pulse">●</span>
+                      <span className="animate-pulse" style={{ animationDelay: '0.2s' }}>●</span>
+                      <span className="animate-pulse" style={{ animationDelay: '0.4s' }}>●</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div ref={messagesEndRef} />
+          </>
+        )}
       </div>
 
       {/* Input Area */}
@@ -269,35 +370,6 @@ export function MessageArea({
         {/* Toolbar */}
         <div className="flex items-center justify-between" style={{ marginBottom: 8 }}>
           <div className="flex items-center" style={{ gap: 6 }}>
-            {/* Attachment Button */}
-            <button
-              className="flex items-center cursor-pointer transition-all"
-              style={{
-                gap: 4,
-                padding: '4px 8px 4px 4px',
-                borderRadius: 8,
-                border: '1px solid var(--border-card)',
-                background: 'var(--bg-card)',
-                color: 'var(--text-secondary)',
-                fontSize: 11,
-              }}
-            >
-              <span
-                className="flex items-center justify-center"
-                style={{
-                  width: 22,
-                  height: 22,
-                  borderRadius: 4,
-                  background: 'rgba(212, 168, 83, 0.15)',
-                }}
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent-gold)" strokeWidth="1.5" style={{ width: 14, height: 14 }}>
-                  <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-                </svg>
-              </span>
-              <span>附件</span>
-            </button>
-
             {/* New Session Button */}
             <button
               className="flex items-center cursor-pointer transition-all"
@@ -337,9 +409,10 @@ export function MessageArea({
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="输入消息..."
+              placeholder="输入消息... (Ctrl+Enter 发送)"
               rows={1}
               className="w-full resize-none outline-none"
+              disabled={isStreaming}
               style={{
                 minHeight: 44,
                 maxHeight: 120,
@@ -351,28 +424,52 @@ export function MessageArea({
                 fontSize: 13,
                 fontFamily: 'inherit',
                 lineHeight: 1.5,
+                opacity: isStreaming ? 0.6 : 1,
               }}
             />
           </div>
-          {/* Send Button */}
-          <button
-            className="flex items-center justify-center flex-shrink-0"
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 10,
-              border: 'none',
-              background: 'var(--accent-gold)',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-            }}
-            onClick={handleSend}
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" strokeWidth="2" style={{ width: 16, height: 16 }}>
-              <line x1="22" y1="2" x2="11" y2="13" />
-              <polygon points="22 2 15 22 11 13 2 9 22 2" />
-            </svg>
-          </button>
+          {/* Send / Stop Button */}
+          {isStreaming ? (
+            <button
+              className="flex items-center justify-center flex-shrink-0"
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                border: 'none',
+                background: '#ef4444',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+              onClick={handleStop}
+              title="停止生成"
+            >
+              <svg viewBox="0 0 24 24" fill="white" style={{ width: 14, height: 14 }}>
+                <rect x="6" y="6" width="12" height="12" rx="2" />
+              </svg>
+            </button>
+          ) : (
+            <button
+              className="flex items-center justify-center flex-shrink-0"
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                border: 'none',
+                background: inputValue.trim() ? 'var(--accent-gold)' : 'var(--bg-card)',
+                cursor: inputValue.trim() ? 'pointer' : 'default',
+                transition: 'all 0.2s',
+                opacity: inputValue.trim() ? 1 : 0.5,
+              }}
+              onClick={handleSend}
+              disabled={!inputValue.trim() || !projectId}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke={inputValue.trim() ? '#1a1a1a' : 'var(--text-secondary)'} strokeWidth="2" style={{ width: 16, height: 16 }}>
+                <line x1="22" y1="2" x2="11" y2="13" />
+                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
     </div>

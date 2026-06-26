@@ -75,6 +75,9 @@ export function AppLayout() {
           <MessageArea
             selectedAgent={selectedAgent?.name || ''}
             selectedSession={selectedSession?.title || selectedSession?.id || ''}
+            agentId={selectedAgent?.id}
+            sessionId={selectedSession?.id}
+            projectId={state.selectedProjectId || state.projects[0]?.id}
             onToggleHelper={handleToggleHelper}
             onBack={() => dispatch({ type: 'SET_MOBILE_VIEW', payload: 'agents' })}
           />

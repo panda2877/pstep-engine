@@ -198,6 +198,7 @@ export function createServer(options: EngineServerOptions = {}) {
         required: ['projectId', 'message'],
         properties: {
           projectId: { type: 'string' },
+          agentId: { type: 'string' },
           sessionId: { type: 'string' },
           message: { type: 'string' },
           stream: { type: 'boolean', default: true },
@@ -205,8 +206,8 @@ export function createServer(options: EngineServerOptions = {}) {
       },
     },
   }, async (request, reply) => {
-    const body = request.body as { projectId: string; sessionId?: string; message: string; stream?: boolean };
-    const { projectId, sessionId, message, stream = true } = body;
+    const body = request.body as { projectId: string; agentId?: string; sessionId?: string; message: string; stream?: boolean };
+    const { projectId, agentId, sessionId, message, stream = true } = body;
 
     if (!stream) {
       return { type: 'done', sessionId: sessionId || 'temp', message: 'Non-streaming mode not yet implemented' };
@@ -221,7 +222,7 @@ export function createServer(options: EngineServerOptions = {}) {
           description: "Auto-created for session",
         });
       }
-      const session = SessionDao.create({ projectId: project.id, title: message.slice(0, 50) });
+      const session = SessionDao.create({ projectId: project.id, agentId, title: message.slice(0, 50) });
       actualSessionId = session.id;
     }
 
