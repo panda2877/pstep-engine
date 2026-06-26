@@ -247,20 +247,31 @@ export class Orchestrator {
             );
           }
           // 收集最终 assistant 文本（用于历史持久化）
+          // event.message 可能不存在或结构不同，做多重兼容
           const endMsg = (event as any).message;
-          if (endMsg && endMsg.role === "assistant") {
+          console.log(`[Orchestrator] message_end: role=${endMsg?.role}, contentType=${typeof endMsg?.content}, isArray=${Array.isArray(endMsg?.content)}`);
+          if (endMsg && endMsg.role === "assistant" && currentStreamingContent) {
+            // 优先从 event.message.content 取文本
+            let text = "";
             const blocks = endMsg.content;
             if (Array.isArray(blocks)) {
               const textBlock = blocks.find((b: any) => b.type === "text" && b.text);
-              if (textBlock) {
-                finalAssistantContents.push(textBlock.text);
-                // 同步更新 allTurnsContent，确保下一轮能衔接
-                if (allTurnsContent) allTurnsContent += "\n\n";
-                allTurnsContent += textBlock.text;
-              }
+              if (textBlock) text = textBlock.text;
+            } else if (typeof blocks === "string") {
+              text = blocks;
+            }
+            // fallback: 用 currentStreamingContent（message_update 累积的）
+            if (!text && currentStreamingContent) {
+              text = currentStreamingContent;
+            }
+            if (text && text.trim().length > 0) {
+              finalAssistantContents.push(text);
+              if (allTurnsContent) allTurnsContent += "\n\n";
+              allTurnsContent += text;
+              console.log(`[Orchestrator] message_end: collected text (${text.length} chars)`);
             }
           }
-          console.log(`[Orchestrator] message_end: finalAssistantContents=${finalAssistantContents.length}, allTurnsContent length=${allTurnsContent.length}`);
+          console.log(`[Orchestrator] message_end done: finalAssistantContents=${finalAssistantContents.length}, allTurnsContent length=${allTurnsContent.length}`);
           currentStreamingContent = "";
           currentToolCallId = null;
           currentToolName = null;
@@ -356,25 +367,22 @@ export class Orchestrator {
       unsubscribe();
 
       // 保存本次对话消息（用于多轮上下文）
-      // 放在 finally 中确保：即使客户端断开导致 generator 被提前 return，
-      // 消息仍然会被持久化。
+      // fire-and-forget: 不 await，避免 DB 挂起导致 generator 永不完成、
+      // done 事件无法发送、前端 isStreaming 卡死。
       console.log(`[Orchestrator] finally: saveMessages=${!!this.options.saveMessages}, finalAssistantContents=${finalAssistantContents.length}`);
       if (this.options.saveMessages) {
-        try {
-          const toSave: HistoryEntry[] = [{ role: "user", content: userMessage }];
-          for (const content of finalAssistantContents) {
-            if (content && content.trim().length > 0) {
-              toSave.push({ role: "assistant", content });
-            }
+        const toSave: HistoryEntry[] = [{ role: "user", content: userMessage }];
+        for (const content of finalAssistantContents) {
+          if (content && content.trim().length > 0) {
+            toSave.push({ role: "assistant", content });
           }
-          if (toSave.length > 0) {
-            await this.options.saveMessages(sessionId, toSave);
-            console.log(`[Orchestrator] saved ${toSave.length} messages for session ${sessionId}`);
-          } else {
-            console.warn(`[Orchestrator] nothing to save! finalAssistantContents=${finalAssistantContents.length}`);
-          }
-        } catch (err) {
-          console.error("[Orchestrator] failed to save messages:", (err as Error).message);
+        }
+        if (toSave.length > 0) {
+          this.options.saveMessages(sessionId, toSave)
+            .then(() => console.log(`[Orchestrator] saved ${toSave.length} messages for session ${sessionId}`))
+            .catch((err) => console.error("[Orchestrator] failed to save messages:", err.message));
+        } else {
+          console.warn(`[Orchestrator] nothing to save! finalAssistantContents=${finalAssistantContents.length}`);
         }
       }
     }
