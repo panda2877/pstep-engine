@@ -113,10 +113,10 @@ DELETE /api/projects/:id/rules
 **改造点**：增加 `agentId` 字段
 
 ```http
-# 获取会话列表（改造：支持 agentId 查询）
+# 获取会话列表（支持 agentId 查询）
 GET /api/sessions?projectId=xxx&agentId=xxx
 
-# 创建会话（改造：需要 agentId）
+# 创建会话（需要 agentId）
 POST /api/sessions
 Body:
 {
@@ -125,7 +125,14 @@ Body:
   "title": "会话标题"
 }
 
-# 获取会话详情（改造：返回 agent 信息）
+# 更新会话（重命名）
+PUT /api/sessions/:id
+Body:
+{
+  "title": "新标题"
+}
+
+# 获取会话详情（返回 agent 信息）
 GET /api/sessions/:id
 
 Response:
@@ -142,6 +149,9 @@ Response:
   "messages": [...],
   "status": "ok"
 }
+
+# 删除会话
+DELETE /api/sessions/:id
 ```
 
 ### 2. 聊天接口
@@ -173,7 +183,7 @@ data: {"type":"done","sessionId":"uuid","messageCount":1}
 
 ---
 
-## 三、需要新增的接口 🆕
+## 三、需要新增的接口 🆕 ✅
 
 ### 1. Agent 管理
 
