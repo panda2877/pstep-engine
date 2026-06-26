@@ -46,35 +46,48 @@ interface MermaidDiagramProps {
   code: string;
 }
 
+/** 清理 mermaid.render() 留在 body 上的临时 SVG（含错误 SVG） */
+function cleanupMermaidTemp(id: string) {
+  // mermaid v11 可能创建多种 id 变体
+  for (const suffix of ['', '-error', '-diagram']) {
+    const el = document.getElementById(id + suffix);
+    if (el) el.remove();
+  }
+}
+
+let idCounter = 0;
+
 export function MermaidDiagram({ code }: MermaidDiagramProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [svgContent, setSvgContent] = useState<string>('');
   const [error, setError] = useState<boolean>(false);
-  const idRef = useRef(`mermaid-${Math.random().toString(36).slice(2, 9)}`);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
-  const renderedCodeRef = useRef<string>(''); // 已成功渲染的代码
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const renderedCodeRef = useRef<string>('');
 
   useEffect(() => {
-    // 清除上一次的防抖定时器
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
     }
 
-    // 如果代码没变，不处理
     if (code === renderedCodeRef.current) return;
 
-    // 防抖 400ms：流式更新时等内容稳定后再渲染
     let cancelled = false;
+
     debounceRef.current = setTimeout(async () => {
+      if (cancelled) return;
+      const renderId = `mdia-${++idCounter}`;
       try {
         initMermaid();
-        const { svg } = await mermaid.render(idRef.current, code);
+        const { svg } = await mermaid.render(renderId, code);
+        cleanupMermaidTemp(renderId);
         if (!cancelled) {
           renderedCodeRef.current = code;
           setSvgContent(svg);
           setError(false);
         }
-      } catch {
+      } catch (err) {
+        console.error('[Mermaid] render error:', err);
+        cleanupMermaidTemp(renderId);
         if (!cancelled) {
           setError(true);
         }
@@ -83,12 +96,6 @@ export function MermaidDiagram({ code }: MermaidDiagramProps) {
 
     return () => {
       cancelled = true;
-    };
-
-    return () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
     };
   }, [code]);
 
@@ -127,7 +134,6 @@ export function MermaidDiagram({ code }: MermaidDiagramProps) {
     );
   }
 
-  // 有 SVG 就显示 SVG，没有则显示加载提示（首次渲染）
   return (
     <div
       ref={containerRef}

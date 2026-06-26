@@ -42,8 +42,11 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
 
             // Mermaid 图表渲染
             if (match && match[1].toLowerCase() === 'mermaid') {
-              const code = String(children).replace(/\n$/, '');
-              return <MermaidDiagram code={code} />;
+              // 安全提取文本：children 可能是字符串或字符串数组
+              const code = Array.isArray(children)
+                ? children.filter(c => typeof c === 'string').join('')
+                : String(children ?? '');
+              return <MermaidDiagram code={code.replace(/\n$/, '')} />;
             }
 
             return (
