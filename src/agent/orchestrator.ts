@@ -157,6 +157,10 @@ export class Orchestrator {
     let currentToolCallId: string | null = null;
     let currentToolName: string | null = null;
 
+    // 已完成轮次的内容累积（PSV 循环可能有多轮 assistant 回复）
+    // 每轮 message_end 时把该轮最终文本追加到这里
+    let allTurnsContent = "";
+
     // 收集本轮最终的 assistant 文本（用于历史持久化）
     // 用 message_end 触发，保存的是 message 整体的最终内容（非流式快照）
     const finalAssistantContents: string[] = [];
@@ -165,7 +169,11 @@ export class Orchestrator {
     const unsubscribe = agent.subscribe(async (event: AgentEvent) => {
       switch (event.type) {
         case "message_start":
-          // 新的消息开始，重置流式内容
+          // 新的消息开始 — 上一轮已结束，把上轮最终内容追加到 allTurnsContent
+          if (currentStreamingContent && currentStreamingRole === "assistant") {
+            if (allTurnsContent) allTurnsContent += "\n\n";
+            allTurnsContent += currentStreamingContent;
+          }
           currentStreamingRole = event.message.role === "assistant" ? "assistant" : "tool";
           currentStreamingContent = "";
           currentToolCallId = null;
@@ -204,12 +212,16 @@ export class Orchestrator {
           }
           if (content) {
             currentStreamingContent = content;
+            // 发送 allTurnsContent + 当前轮内容，前端无需自行累积
+            const fullContent = allTurnsContent
+              ? allTurnsContent + "\n\n" + content
+              : content;
             queue.push({
               id: randomUUID(),
               role: "assistant",
               createdAt: Date.now(),
               type: "streaming",
-              content: content,
+              content: fullContent,
               isToolCall: false,
               isPartial: true,
             });
@@ -217,12 +229,15 @@ export class Orchestrator {
           break;
 
         case "message_end": {
-          // 消息结束，输出最终的 streaming 消息
+          // 消息结束，输出最终的 streaming 消息（含所有轮次累积内容）
           if (currentStreamingContent || currentToolCallId) {
+            const endFullContent = allTurnsContent
+              ? allTurnsContent + "\n\n" + currentStreamingContent
+              : currentStreamingContent;
             queue.push(
               this.createStreamingMessage(
                 randomUUID(),
-                currentStreamingContent,
+                endFullContent,
                 currentStreamingRole,
                 currentToolCallId || undefined,
                 currentToolName || undefined
@@ -237,9 +252,13 @@ export class Orchestrator {
               const textBlock = blocks.find((b: any) => b.type === "text" && b.text);
               if (textBlock) {
                 finalAssistantContents.push(textBlock.text);
+                // 同步更新 allTurnsContent，确保下一轮能衔接
+                if (allTurnsContent) allTurnsContent += "\n\n";
+                allTurnsContent += textBlock.text;
               }
             }
           }
+          console.log(`[Orchestrator] message_end: finalAssistantContents=${finalAssistantContents.length}, allTurnsContent length=${allTurnsContent.length}`);
           currentStreamingContent = "";
           currentToolCallId = null;
           currentToolName = null;
@@ -337,6 +356,7 @@ export class Orchestrator {
       // 保存本次对话消息（用于多轮上下文）
       // 放在 finally 中确保：即使客户端断开导致 generator 被提前 return，
       // 消息仍然会被持久化。
+      console.log(`[Orchestrator] finally: saveMessages=${!!this.options.saveMessages}, finalAssistantContents=${finalAssistantContents.length}`);
       if (this.options.saveMessages) {
         try {
           const toSave: HistoryEntry[] = [{ role: "user", content: userMessage }];
@@ -348,6 +368,8 @@ export class Orchestrator {
           if (toSave.length > 0) {
             await this.options.saveMessages(sessionId, toSave);
             console.log(`[Orchestrator] saved ${toSave.length} messages for session ${sessionId}`);
+          } else {
+            console.warn(`[Orchestrator] nothing to save! finalAssistantContents=${finalAssistantContents.length}`);
           }
         } catch (err) {
           console.error("[Orchestrator] failed to save messages:", (err as Error).message);
