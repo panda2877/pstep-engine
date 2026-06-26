@@ -171,23 +171,29 @@ export class Orchestrator {
     const unsubscribe = agent.subscribe(async (event: AgentEvent) => {
       switch (event.type) {
         case "message_start":
-          // 新的消息开始 — 上一轮已结束，把上轮最终内容追加到 allTurnsContent
-          if (currentStreamingContent && currentStreamingRole === "assistant") {
-            if (allTurnsContent) allTurnsContent += "\n\n";
-            allTurnsContent += currentStreamingContent;
-          }
-          currentStreamingRole = event.message.role === "assistant" ? "assistant" : "tool";
-          currentStreamingContent = "";
-          currentToolCallId = null;
-          currentToolName = null;
-
-          // 检查是否是工具调用消息
-          const msgContent = (event.message as any).content;
-          if (msgContent && Array.isArray(msgContent) && msgContent.length > 0) {
-            const firstBlock = msgContent[0];
-            if (firstBlock && firstBlock.type === "toolCall") {
-              currentToolCallId = firstBlock.id;
-              currentToolName = firstBlock.name;
+          // PSV 循环中会穿插 user/tool 消息的 message_start。
+          // 只有 assistant 的 message_start 才重置 currentStreamingContent，
+          // 否则会清掉上一轮 assistant 还没被 message_end 收集的内容。
+          if (event.message.role === "assistant") {
+            // assistant 新轮次开始 — 先把上轮内容追加到 allTurnsContent
+            if (currentStreamingContent) {
+              if (allTurnsContent) allTurnsContent += "\n\n";
+              allTurnsContent += currentStreamingContent;
+            }
+            currentStreamingRole = "assistant";
+            currentStreamingContent = "";
+            currentToolCallId = null;
+            currentToolName = null;
+          } else {
+            // user / tool 消息 — 不影响 assistant 流式状态
+            // 但如果是工具调用，记录 ID
+            const msgContent = (event.message as any).content;
+            if (msgContent && Array.isArray(msgContent) && msgContent.length > 0) {
+              const firstBlock = msgContent[0];
+              if (firstBlock && firstBlock.type === "toolCall") {
+                currentToolCallId = firstBlock.id;
+                currentToolName = firstBlock.name;
+              }
             }
           }
           break;
@@ -232,6 +238,9 @@ export class Orchestrator {
 
         case "message_end": {
           // 消息结束，输出最终的 streaming 消息（含所有轮次累积内容）
+          // 只处理 assistant 的 message_end，user/tool 的不推送 streaming
+          const endMsg = (event as any).message;
+          if (endMsg?.role !== "assistant") break;
           if (currentStreamingContent || currentToolCallId) {
             const endFullContent = allTurnsContent
               ? allTurnsContent + "\n\n" + currentStreamingContent
@@ -248,9 +257,8 @@ export class Orchestrator {
           }
           // 收集最终 assistant 文本（用于历史持久化）
           // event.message 可能不存在或结构不同，做多重兼容
-          const endMsg = (event as any).message;
           console.log(`[Orchestrator] message_end: role=${endMsg?.role}, contentType=${typeof endMsg?.content}, isArray=${Array.isArray(endMsg?.content)}`);
-          if (endMsg && endMsg.role === "assistant" && currentStreamingContent) {
+          if (currentStreamingContent) {
             // 优先从 event.message.content 取文本
             let text = "";
             const blocks = endMsg.content;
