@@ -11,9 +11,12 @@ import type { PstepMessage } from "./types/messages.js";
 const app = createServer({
   loadHistory: async (sessionId: string) => {
     const messages = MessageDao.findBySession(sessionId);
+    // 只加载 user 消息作为历史上下文。
+    // assistant 消息需要 pi-ai 的完整 AssistantMessage 结构（api/provider/model/usage/stopReason），
+    // 我们数据库中没有这些字段，传入会导致 pi-agent-core 第二次 prompt() 时 LLM 返回空内容。
     return messages
-      .filter((m) => m.role === "user" || m.role === "assistant")
-      .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+      .filter((m) => m.role === "user")
+      .map((m) => ({ role: "user" as const, content: m.content }));
   },
   saveMessages: async (sessionId: string, entries) => {
     for (const entry of entries) {

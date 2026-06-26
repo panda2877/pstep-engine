@@ -124,13 +124,17 @@ export class Orchestrator {
     const gatewayApiKey = process.env.GATEWAY_API_KEY;
 
     // 加载历史消息（用于多轮上下文）
+    // 注意：只加载 user 消息。assistant 消息需要完整的 pi-ai AssistantMessage 结构
+    // （api/provider/model/usage/stopReason），数据库中没有这些字段，传入会导致
+    // pi-agent-core 第二次 prompt() 时 LLM 返回空内容。
     let historyMessages: AgentMessage[] = [];
     if (this.options.loadHistory) {
       try {
         const entries = await this.options.loadHistory(sessionId);
+        console.log(`[Orchestrator] loaded ${entries.length} history entries for session ${sessionId}`);
         historyMessages = entries.map((e) => ({
-          role: e.role as "user" | "assistant",
-          content: e.content,
+          role: "user" as const,
+          content: [{ type: "text" as const, text: e.content }],
           timestamp: Date.now(),
         })) as AgentMessage[];
       } catch (err) {
@@ -318,9 +322,14 @@ export class Orchestrator {
 
         case "turn_end":
           // 轮次结束，触发 PSV 循环控制
-          const steeringMsg = await loop.handleAgentEvent(agent, event);
-          if (steeringMsg) {
-            agent.steer(steeringMsg);
+          try {
+            const steeringMsg = await loop.handleAgentEvent(agent, event);
+            if (steeringMsg) {
+              console.log(`[Orchestrator] PSV steering: ${steeringMsg}`);
+              agent.steer(steeringMsg);
+            }
+          } catch (err) {
+            console.error("[Orchestrator] turn_end handler error:", (err as Error).message);
           }
           break;
 
@@ -339,23 +348,29 @@ export class Orchestrator {
     try {
       // 后台启动 Agent 执行（并发消费队列）
       const agentPromise = agent.prompt(userMessage)
-        .then(() => agent.waitForIdle())
+        .then(() => {
+          console.log(`[Orchestrator] agent.prompt() resolved, streamingContent length=${currentStreamingContent?.length ?? 0}, allTurnsContent length=${allTurnsContent.length}`);
+          return agent.waitForIdle();
+        })
         .then(() => {
           // Agent 空闲后，检查是否完成
           const state = loop.getPhaseState();
-          if (state.current === "completed") {
-            queue.push({
-              id: randomUUID(),
-              role: "assistant",
-              createdAt: Date.now(),
-              type: "done",
-              sessionId,
-              messageCount: agent.state.messages.length,
-              totalSteps: state.totalSteps,
-              completedSteps: state.stepIndex,
-              summary: "任务完成",
-            });
-          }
+          console.log(`[Orchestrator] agent idle, phase=${state.current}, messages=${agent.state.messages.length}`);
+          // 始终发送 done 事件，确保前端收到完成信号
+          queue.push({
+            id: randomUUID(),
+            role: "assistant",
+            createdAt: Date.now(),
+            type: "done",
+            sessionId,
+            messageCount: agent.state.messages.length,
+            totalSteps: state.totalSteps,
+            completedSteps: state.stepIndex,
+            summary: state.current === "completed" ? "任务完成" : "回复完成",
+          });
+        })
+        .catch((err) => {
+          console.error("[Orchestrator] agent execution error:", err?.message ?? err);
         })
         .finally(() => {
           queue.close();
