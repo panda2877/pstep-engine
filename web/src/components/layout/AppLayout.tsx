@@ -60,7 +60,7 @@ export function AppLayout() {
         {/* Agent Bar - 桌面端始终显示；移动端仅 agents 视图 */}
         <div className={`${
           state.mobileView === 'agents' ? 'flex' : 'hidden'
-        } md:flex flex-shrink-0`}>
+        } md:flex flex-shrink-0 h-full`}>
           <AgentBar
             selectedAgent={selectedAgent?.name || ''}
             selectedSession={selectedSession?.id || ''}
