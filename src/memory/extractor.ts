@@ -147,7 +147,7 @@ export class MemoryExtractor {
           ...(this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {}),
         },
         body: JSON.stringify({
-          model: 'mimo-v2.5',
+          model: 'MiniMax-M3',
           messages: [
             { role: 'system', content: EXTRACTION_PROMPT },
             { role: 'user', content: conversation.slice(0, 8000) }, // 限制长度
@@ -166,7 +166,13 @@ export class MemoryExtractor {
       }
 
       const data = await response.json() as any;
-      const content = data.choices?.[0]?.message?.content;
+      // 支持 thinking 模型：提取最终回复内容（跳过 <think>...</think>）
+      let content = data.choices?.[0]?.message?.content || '';
+      const thinkingEndTag = '</' + 'think>';
+      const thinkingIdx = content.indexOf(thinkingEndTag);
+      if (thinkingIdx !== -1) {
+        content = content.substring(thinkingIdx + thinkingEndTag.length).trim();
+      }
       console.log(`[MemoryExtractor] LLM content length: ${content?.length ?? 0}`);
 
       if (!content) {
