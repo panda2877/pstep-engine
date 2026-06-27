@@ -60,7 +60,8 @@ export function HelperPanel({ isOpen, onClose, isMobile, onMobileOverlayClose }:
         <div
           style={{
             position: 'fixed', top: 0, right: 0, bottom: 0,
-            width: '66.67%', maxWidth: 'none', zIndex: 1001,
+            width: '85%', maxWidth: 360, zIndex: 1001,
+            paddingTop: 'env(safe-area-inset-top, 0px)',
             transform: isOpen ? 'translateX(0)' : 'translateX(100%)',
             transition: 'transform 0.5s ease',
             boxShadow: isOpen ? '-10px 0 30px var(--shadow)' : 'none',

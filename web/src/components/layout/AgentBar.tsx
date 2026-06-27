@@ -131,7 +131,7 @@ export function AgentBar({
 
   return (
     <div
-      className="hidden md:flex flex-col flex-shrink-0"
+      className="flex flex-col flex-shrink-0 h-full"
       style={{
         width: 'var(--agent-width)',
         minWidth: 'var(--agent-width)',

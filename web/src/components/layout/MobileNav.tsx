@@ -13,7 +13,8 @@ export function MobileNav({ activeView, onViewChange }: MobileNavProps) {
     <div
       className="md:hidden fixed bottom-0 left-0 right-0"
       style={{
-        height: 52,
+        height: 56,
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
         background: 'var(--bg-secondary)',
         borderTop: '1px solid var(--border-card)',
         zIndex: 100,

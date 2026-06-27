@@ -36,6 +36,7 @@ export function MessageArea({
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingContent, setStreamingContent] = useState('');
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<(() => void) | null>(null);
 
@@ -63,6 +64,7 @@ export function MessageArea({
 
     const userMessage = inputValue.trim();
     setInputValue('');
+    setError(null);
 
     // 添加用户消息
     const userMsg: Message = {
@@ -134,12 +136,14 @@ export function MessageArea({
         console.error('[MessageArea] Stream error:', err);
         setIsStreaming(false);
         setStreamingContent('');
+        setError(err.message || '连接失败，请重试');
       },
     );
   }, [inputValue, projectId, agentId, sessionId, isStreaming, fetchSessions, state.selectedAgentId]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.ctrlKey && e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
       handleSend();
     }
   };
@@ -272,7 +276,7 @@ export function MessageArea({
       </div>
 
       {/* Message List */}
-      <div className="flex-1 overflow-y-auto flex flex-col" style={{ padding: '16px 20px', gap: 12 }}>
+      <div className="flex-1 overflow-y-auto flex flex-col" style={{ padding: '16px 20px', paddingBottom: 'calc(16px + 56px + env(safe-area-inset-bottom, 0px))', gap: 12 }}>
         {loadingMessages ? (
           <div className="flex-1 flex items-center justify-center" style={{ color: 'var(--text-secondary)', fontSize: 12 }}>
             加载消息...
@@ -292,7 +296,7 @@ export function MessageArea({
                 className="flex"
                 style={{
                   gap: 10,
-                  maxWidth: '85%',
+                  maxWidth: '92%',
                   flexDirection: msg.role === 'user' ? 'row-reverse' : 'row',
                   alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
                 }}
@@ -335,7 +339,7 @@ export function MessageArea({
 
             {/* 流式输出中 */}
             {isStreaming && (
-              <div className="flex" style={{ gap: 10, maxWidth: '85%', alignSelf: 'flex-start' }}>
+              <div className="flex" style={{ gap: 10, maxWidth: '92%', alignSelf: 'flex-start' }}>
                 <div
                   className="flex items-center justify-center flex-shrink-0"
                   style={{
@@ -383,11 +387,41 @@ export function MessageArea({
       <div
         className="flex-shrink-0"
         style={{
-          padding: '10px 12px 12px',
+          padding: '10px 12px calc(12px + env(safe-area-inset-bottom, 0px))',
           borderTop: '1px solid var(--border-card)',
           background: 'var(--bg-secondary)',
         }}
       >
+        {/* Error Banner */}
+        {error && (
+          <div
+            className="flex items-center justify-between rounded-lg"
+            style={{
+              padding: '8px 12px',
+              marginBottom: 8,
+              background: 'rgba(239, 68, 68, 0.15)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              fontSize: 12,
+              color: '#fca5a5',
+            }}
+          >
+            <span>{error}</span>
+            <button
+              onClick={() => setError(null)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#fca5a5',
+                cursor: 'pointer',
+                padding: 2,
+                fontSize: 14,
+                lineHeight: 1,
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        )}
         {/* Toolbar */}
         <div className="flex items-center justify-between" style={{ marginBottom: 8 }}>
           <div className="flex items-center" style={{ gap: 6 }}>
@@ -430,7 +464,7 @@ export function MessageArea({
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="输入消息... (Ctrl+Enter 发送)"
+              placeholder="输入消息... (Enter 发送, Shift+Enter 换行)"
               rows={1}
               className="w-full resize-none outline-none"
               disabled={isStreaming}

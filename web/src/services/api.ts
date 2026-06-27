@@ -280,8 +280,8 @@ export function createChatStream(
       let eventData = '';
 
       while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+        const { done: streamDone, value } = await reader.read();
+        if (streamDone) break;
 
         buffer += decoder.decode(value, { stream: true });
 

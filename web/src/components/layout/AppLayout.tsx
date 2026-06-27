@@ -9,6 +9,7 @@ import { FnBar } from './FnBar';
 import { AgentBar } from './AgentBar';
 import { MessageArea } from './MessageArea';
 import { HelperPanel } from './HelperPanel';
+import { MobileNav } from './MobileNav';
 
 export function AppLayout() {
   const { state, dispatch, selectAgent, selectSession } = useAppStore();
@@ -92,6 +93,12 @@ export function AppLayout() {
           onMobileOverlayClose={() => dispatch({ type: 'SET_MOBILE_VIEW', payload: 'chat' })}
         />
       </div>
+
+      {/* Mobile Bottom Nav */}
+      <MobileNav
+        activeView={state.mobileView}
+        onViewChange={(view) => dispatch({ type: 'SET_MOBILE_VIEW', payload: view })}
+      />
     </div>
   );
 }

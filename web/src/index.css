@@ -89,3 +89,29 @@ body {
   border: 1px solid var(--border-card);
 }
 .tooltip:hover::after { opacity: 1; }
+
+/* ===== Mobile ===== */
+@media (max-width: 768px) {
+  /* 增大触摸目标尺寸 */
+  button, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* 移动端消息列表内边距 */
+  .message-list {
+    padding: 12px !important;
+  }
+
+  /* 移动端输入框全宽 */
+  textarea {
+    font-size: 16px !important; /* 防止 iOS 自动缩放 */
+  }
+}
+
+/* ===== Safe Area ===== */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
