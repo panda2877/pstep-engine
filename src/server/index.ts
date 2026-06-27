@@ -14,6 +14,7 @@ import { ProjectDao, SessionDao, MessageDao, AgentDao, MemoryDao } from '../db/d
 import { createEngine } from '../engine/index.js';
 import type { PstepMessage } from '../types/messages.js';
 import type { HistoryEntry } from '../agent/orchestrator.js';
+import { createMemoryExtractor, type MemoryExtractor } from '../memory/extractor.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -41,6 +42,7 @@ export function createServer(options: EngineServerOptions = {}) {
   });
 
   const ruleEngine = new RuleEngine();
+  const memoryExtractor = createMemoryExtractor(gatewayUrl, process.env.GATEWAY_API_KEY);
 
   server.register(cors, {
     origin: '*',
@@ -63,6 +65,7 @@ export function createServer(options: EngineServerOptions = {}) {
     systemPrompt: '',
     loadHistory: options.loadHistory,
     saveMessages: options.saveMessages,
+    memoryExtractor,
   });
   // Eagerly initialize the shared engine so channels (e.g. Feishu) can
   // dispatch user messages without paying the cold-start cost per turn.

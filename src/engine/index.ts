@@ -10,6 +10,7 @@ import type { PlanSolveLoopOptions } from '../agent/plan-solve-loop.js';
 import { RuleEngine, type RuleEngineOptions } from '../rules/rule-engine.js';
 import { MemoryDao, AgentDao } from '../db/dao.js';
 import type { MemoryEntry, AgentSoul } from '../types/rules.js';
+import type { MemoryExtractor } from '../memory/extractor.js';
 
 /**
  * PstepEngineOptions
@@ -24,6 +25,8 @@ export interface PstepEngineOptions {
   loadHistory?: (sessionId: string) => Promise<HistoryEntry[]>;
   /** 保存本次执行产生的新消息 */
   saveMessages?: (sessionId: string, entries: HistoryEntry[]) => Promise<void>;
+  /** 记忆提取器 */
+  memoryExtractor?: MemoryExtractor;
 }
 
 /**
@@ -33,6 +36,7 @@ export class PstepEngine {
   private options: PstepEngineOptions;
   private orchestrator: ReturnType<typeof createOrchestrator> | null = null;
   private ruleEngine: RuleEngine;
+  private memoryExtractor: MemoryExtractor | null;
   private phaseState: PhaseState = {
     current: 'plan',
     stepIndex: 0,
@@ -42,6 +46,7 @@ export class PstepEngine {
   constructor(options: PstepEngineOptions) {
     this.options = options;
     this.ruleEngine = new RuleEngine(options.ruleEngineOptions ?? {});
+    this.memoryExtractor = options.memoryExtractor ?? null;
   }
 
   /**
@@ -137,7 +142,37 @@ export class PstepEngine {
     const originalBuild = (this.orchestrator as any).buildSystemPrompt;
     (this.orchestrator as any).buildSystemPrompt = () => systemPrompt;
 
-    yield* this.orchestrator!.execute(userMessage, projectId, sessionId);
+    // 包装 saveMessages 以触发记忆提取
+    const originalSaveMessages = this.options.saveMessages;
+    const memoryExtractor = this.memoryExtractor;
+    const wrappedSaveMessages = originalSaveMessages
+      ? async (sid: string, entries: HistoryEntry[]) => {
+          // 先保存消息
+          await originalSaveMessages(sid, entries);
+          // 然后异步提取记忆（不阻塞）
+          if (memoryExtractor && entries.length > 0) {
+            memoryExtractor
+              .extract(entries, projectId, agentId, sid)
+              .catch((err) => console.error('[PstepEngine] Memory extraction failed:', err.message));
+          }
+        }
+      : undefined;
+
+    // 临时覆盖 saveMessages
+    const orchestratorAny = this.orchestrator as any;
+    const originalOrchestratorSave = orchestratorAny.options?.saveMessages;
+    if (wrappedSaveMessages) {
+      orchestratorAny.options = { ...orchestratorAny.options, saveMessages: wrappedSaveMessages };
+    }
+
+    try {
+      yield* this.orchestrator!.execute(userMessage, projectId, sessionId);
+    } finally {
+      // 恢复原始 saveMessages
+      if (originalOrchestratorSave) {
+        orchestratorAny.options.saveMessages = originalOrchestratorSave;
+      }
+    }
   }
 
   /**
