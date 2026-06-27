@@ -104,7 +104,14 @@ export class MemoryExtractor {
 
     // 去重并存储
     let storedCount = 0;
-    for (const memory of extracted.memories) {
+    const memories = extracted.memories || [];
+    for (const memory of memories) {
+      // 验证记忆结构
+      if (!memory.category || !memory.summary) {
+        console.log(`[MemoryExtractor] Skipping invalid memory:`, memory);
+        continue;
+      }
+
       console.log(`[MemoryExtractor] Processing: [${memory.category}] ${memory.summary}`);
       const isDuplicate = this.checkDuplicate(memory, projectId);
       if (!isDuplicate) {
@@ -113,7 +120,7 @@ export class MemoryExtractor {
           agentId,
           category: memory.category,
           summary: memory.summary,
-          importance: memory.importance,
+          importance: memory.importance ?? 50,
           source: 'auto',
           sourceSessionId,
         });
@@ -124,7 +131,7 @@ export class MemoryExtractor {
       }
     }
 
-    console.log(`[MemoryExtractor] Extracted ${extracted.memories.length} memories, stored ${storedCount} new ones`);
+    console.log(`[MemoryExtractor] Extracted ${memories.length} memories, stored ${storedCount} new ones`);
     return storedCount;
   }
 
@@ -184,11 +191,21 @@ export class MemoryExtractor {
       const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, content];
       const jsonStr = jsonMatch[1]?.trim() || content.trim();
 
-      console.log(`[MemoryExtractor] LLM response: ${jsonStr.substring(0, 300)}...`);
+      console.log(`[MemoryExtractor] LLM response: ${jsonStr.substring(0, 500)}...`);
 
-      const result = JSON.parse(jsonStr) as ExtractionResult;
-      console.log(`[MemoryExtractor] Parsed ${result.memories?.length ?? 0} memories`);
-      return result;
+      const parsed = JSON.parse(jsonStr);
+      // 兼容两种格式：数组 或 {memories: [...]}
+      let memories: ExtractedMemory[];
+      if (Array.isArray(parsed)) {
+        memories = parsed;
+      } else if (parsed.memories && Array.isArray(parsed.memories)) {
+        memories = parsed.memories;
+      } else {
+        memories = [];
+      }
+
+      console.log(`[MemoryExtractor] Parsed ${memories.length} memories`);
+      return { memories };
     } catch (err) {
       console.error('[MemoryExtractor] LLM extraction failed:', (err as Error).message);
       console.error('[MemoryExtractor] Stack:', (err as Error).stack);
