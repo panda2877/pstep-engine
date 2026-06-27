@@ -343,8 +343,8 @@ export const AgentDao = {
 // ============================================================================
 
 const insertMemory = db.prepare(`
-  INSERT INTO memory_entries (id, project_id, category, summary, source_session_id, created_at)
-  VALUES (?, ?, ?, ?, ?, ?)
+  INSERT INTO memory_entries (id, project_id, agent_id, category, summary, importance, source, source_session_id, created_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 
 const selectMemoryByProject = db.prepare(`
@@ -355,6 +355,22 @@ const selectMemoryByCategory = db.prepare(`
   SELECT * FROM memory_entries WHERE project_id = ? AND category = ? ORDER BY created_at DESC
 `);
 
+const selectMemoryByCategoryLike = db.prepare(`
+  SELECT * FROM memory_entries WHERE project_id = ? AND category LIKE ? ORDER BY importance DESC, created_at DESC
+`);
+
+const selectMemoryById = db.prepare(`
+  SELECT * FROM memory_entries WHERE id = ?
+`);
+
+const updateMemory = db.prepare(`
+  UPDATE memory_entries SET category = ?, summary = ?, importance = ? WHERE id = ?
+`);
+
+const deleteMemoryById = db.prepare(`
+  DELETE FROM memory_entries WHERE id = ?
+`);
+
 const deleteMemoryByProject = db.prepare(`
   DELETE FROM memory_entries WHERE project_id = ?
 `);
@@ -363,8 +379,22 @@ export const MemoryDao = {
   create(entry: Omit<MemoryEntry, "id" | "createdAt">): MemoryEntry {
     const id = uuidv4();
     const now = Date.now();
-    insertMemory.run(id, entry.projectId, entry.category, entry.summary, entry.sourceSessionId || null, now);
+    insertMemory.run(
+      id,
+      entry.projectId,
+      entry.agentId || null,
+      entry.category,
+      entry.summary,
+      entry.importance ?? 50,
+      entry.source || 'manual',
+      entry.sourceSessionId || null,
+      now
+    );
     return { ...entry, id, createdAt: now };
+  },
+
+  findById(id: string): MemoryEntry | null {
+    return selectMemoryById.get(id) as MemoryEntry | null;
   },
 
   findByProject(projectId: string): MemoryEntry[] {
@@ -373,6 +403,34 @@ export const MemoryDao = {
 
   findByCategory(projectId: string, category: string): MemoryEntry[] {
     return selectMemoryByCategory.all(projectId, category) as MemoryEntry[];
+  },
+
+  findByCategoryPattern(projectId: string, pattern: string): MemoryEntry[] {
+    return selectMemoryByCategoryLike.all(projectId, pattern) as MemoryEntry[];
+  },
+
+  findByAgent(agentId: string): MemoryEntry[] {
+    const rows = db.prepare(`
+      SELECT * FROM memory_entries WHERE agent_id = ? ORDER BY created_at DESC
+    `).all(agentId) as MemoryEntry[];
+    return rows;
+  },
+
+  update(id: string, data: Partial<Pick<MemoryEntry, "category" | "summary" | "importance">>): MemoryEntry | null {
+    const existing = this.findById(id);
+    if (!existing) return null;
+    updateMemory.run(
+      data.category ?? existing.category,
+      data.summary ?? existing.summary,
+      data.importance ?? existing.importance,
+      id
+    );
+    return { ...existing, ...data };
+  },
+
+  delete(id: string): boolean {
+    const result = deleteMemoryById.run(id);
+    return result.changes > 0;
   },
 
   deleteByProject(projectId: string): void {

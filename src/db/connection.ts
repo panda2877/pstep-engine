@@ -86,17 +86,38 @@ export function initializeDatabase(db: InstanceType<typeof DatabaseConstructor>)
     CREATE TABLE IF NOT EXISTS memory_entries (
       id TEXT PRIMARY KEY,
       project_id TEXT NOT NULL,
+      agent_id TEXT,
       category TEXT NOT NULL,
       summary TEXT NOT NULL,
+      importance INTEGER DEFAULT 50,
+      source TEXT DEFAULT 'manual',
       source_session_id TEXT,
       created_at INTEGER NOT NULL,
-      FOREIGN KEY (project_id) REFERENCES projects(id)
+      FOREIGN KEY (project_id) REFERENCES projects(id),
+      FOREIGN KEY (agent_id) REFERENCES agents(id)
     );
   `);
 
   // 迁移：为已有 sessions 表添加 agent_id 字段（如果不存在）
   try {
     db.exec(`ALTER TABLE sessions ADD COLUMN agent_id TEXT REFERENCES agents(id)`);
+  } catch {
+    // 列已存在，忽略错误
+  }
+
+  // 迁移：为 memory_entries 表添加新字段（如果不存在）
+  try {
+    db.exec(`ALTER TABLE memory_entries ADD COLUMN agent_id TEXT REFERENCES agents(id)`);
+  } catch {
+    // 列已存在，忽略错误
+  }
+  try {
+    db.exec(`ALTER TABLE memory_entries ADD COLUMN importance INTEGER DEFAULT 50`);
+  } catch {
+    // 列已存在，忽略错误
+  }
+  try {
+    db.exec(`ALTER TABLE memory_entries ADD COLUMN source TEXT DEFAULT 'manual'`);
   } catch {
     // 列已存在，忽略错误
   }

@@ -10,7 +10,7 @@ import { existsSync } from 'fs';
 import cors from '@fastify/cors';
 import fastifyStatic from '@fastify/static';
 import { RuleEngine } from '../rules/rule-engine.js';
-import { ProjectDao, SessionDao, MessageDao, AgentDao } from '../db/dao.js';
+import { ProjectDao, SessionDao, MessageDao, AgentDao, MemoryDao } from '../db/dao.js';
 import { createEngine } from '../engine/index.js';
 import type { PstepMessage } from '../types/messages.js';
 import type { HistoryEntry } from '../agent/orchestrator.js';
@@ -199,6 +199,63 @@ export function createServer(options: EngineServerOptions = {}) {
     return { results, total: results.length };
   });
 
+  // ============================================================================
+  // Memory API
+  // ============================================================================
+
+  server.get('/api/memory', async (request) => {
+    const query = request.query as { projectId?: string; agentId?: string; category?: string };
+    if (!query.projectId) {
+      return { memories: [], total: 0 };
+    }
+    let memories;
+    if (query.agentId) {
+      memories = MemoryDao.findByAgent(query.agentId);
+    } else if (query.category) {
+      memories = MemoryDao.findByCategory(query.projectId, query.category);
+    } else {
+      memories = MemoryDao.findByProject(query.projectId);
+    }
+    return { memories, total: memories.length };
+  });
+
+  server.post('/api/memory', async (request) => {
+    const body = request.body as {
+      projectId: string;
+      agentId?: string;
+      category: string;
+      summary: string;
+      importance?: number;
+      source?: string;
+      sourceSessionId?: string;
+    };
+    if (!body.projectId || !body.category || !body.summary) {
+      return { status: 'error', message: 'Missing required fields: projectId, category, summary' };
+    }
+    const memory = MemoryDao.create({
+      projectId: body.projectId,
+      agentId: body.agentId,
+      category: body.category,
+      summary: body.summary,
+      importance: body.importance ?? 50,
+      source: body.source ?? 'manual',
+      sourceSessionId: body.sourceSessionId,
+    });
+    return { status: 'created', memory };
+  });
+
+  server.put<{ Params: { id: string } }>('/api/memory/:id', async (request) => {
+    const body = request.body as { category?: string; summary?: string; importance?: number };
+    const updated = MemoryDao.update(request.params.id, body);
+    if (!updated) return { status: 'not_found' };
+    return { status: 'updated', memory: updated };
+  });
+
+  server.delete<{ Params: { id: string } }>('/api/memory/:id', async (request) => {
+    const deleted = MemoryDao.delete(request.params.id);
+    return { status: deleted ? 'deleted' : 'not_found' };
+  });
+
   function rawSse(reply: any, event: string, data: string) {
     const payload = `event: ${event}\ndata: ${data}\n\n`;
     reply.raw.write(payload);
@@ -266,7 +323,7 @@ export function createServer(options: EngineServerOptions = {}) {
       await engine.initialize();
       // 消息持久化由 orchestrator.saveMessages 在引擎结束后统一处理，
       // 此处只做 SSE 转发，避免每条 streaming chunk 都写入 DB 导致重复。
-      for await (const msg of engine.execute(message, projectId, actualSessionId)) {
+      for await (const msg of engine.execute(message, projectId, actualSessionId, agentId)) {
         rawSse(reply, 'message', JSON.stringify(msg));
       }
       rawSse(reply, 'done', JSON.stringify({ type: 'done', sessionId: actualSessionId, messageCount: 1, totalSteps: 0, completedSteps: 0, summary: '引擎已就绪，规则注入完成' }));

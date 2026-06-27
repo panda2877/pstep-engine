@@ -8,6 +8,8 @@ import { createOrchestrator } from '../agent/orchestrator.js';
 import type { HistoryEntry } from '../agent/orchestrator.js';
 import type { PlanSolveLoopOptions } from '../agent/plan-solve-loop.js';
 import { RuleEngine, type RuleEngineOptions } from '../rules/rule-engine.js';
+import { MemoryDao, AgentDao } from '../db/dao.js';
+import type { MemoryEntry, AgentSoul } from '../types/rules.js';
 
 /**
  * PstepEngineOptions
@@ -58,9 +60,9 @@ export class PstepEngine {
   }
 
   /**
-   * 构建系统提示词（包含项目规则）
+   * 构建系统提示词（包含项目规则 + 记忆 + Soul）
    */
-  private async buildSystemPrompt(projectId: string): Promise<string> {
+  private async buildSystemPrompt(projectId: string, agentId?: string): Promise<string> {
     const basePrompt = this.options.systemPrompt ?? `
 你是一位专业的 AI 编程助手，采用 Plan/Solve/Verify 范式工作：
 
@@ -71,20 +73,66 @@ export class PstepEngine {
 请按此流程回答用户问题。
 `;
 
-    // 通过规则引擎合并项目规则
-    return this.ruleEngine.mergeWithBasePrompt(basePrompt, projectId);
+    // 1. 通过规则引擎合并项目规则
+    let prompt = await this.ruleEngine.mergeWithBasePrompt(basePrompt, projectId);
+
+    // 2. 注入用户记忆
+    const userIdentities = MemoryDao.findByCategory(projectId, 'user_identity');
+    const userPreferences = MemoryDao.findByCategory(projectId, 'user_preference');
+    const userStyles = MemoryDao.findByCategory(projectId, 'user_style');
+    const userMemories = [...userIdentities, ...userPreferences, ...userStyles];
+    if (userMemories.length > 0) {
+      prompt += '\n\n---\n\n## 用户信息\n';
+      for (const m of userMemories) {
+        prompt += `- ${m.summary}\n`;
+      }
+    }
+
+    // 3. 注入 Agent Soul + 经验
+    if (agentId) {
+      const agent = AgentDao.findById(agentId);
+      if (agent) {
+        const soul = agent.soul as AgentSoul;
+        prompt += `\n\n---\n\n## 你是 ${agent.name}\n`;
+        if (soul.role) prompt += `- 角色：${soul.role}\n`;
+        if (soul.personality) prompt += `- 性格：${soul.personality}\n`;
+        if (soul.responsibilities) prompt += `- 职责：${soul.responsibilities}\n`;
+        if (soul.catchphrase) prompt += `- 口头禅：${soul.catchphrase}\n`;
+
+        const experiences = MemoryDao.findByCategory(projectId, 'agent_experience');
+        if (experiences.length > 0) {
+          prompt += '\n### 你的经验\n';
+          for (const e of experiences) {
+            prompt += `- ${e.summary}\n`;
+          }
+        }
+      }
+    }
+
+    // 4. 注入项目记忆
+    const projectDecisions = MemoryDao.findByCategory(projectId, 'project_decision');
+    const projectContexts = MemoryDao.findByCategory(projectId, 'project_context');
+    const projectMemories = [...projectDecisions, ...projectContexts];
+    if (projectMemories.length > 0) {
+      prompt += '\n\n---\n\n## 项目上下文\n';
+      for (const m of projectMemories) {
+        prompt += `- ${m.summary}\n`;
+      }
+    }
+
+    return prompt;
   }
 
   /**
    * 执行 Plan/Solve/Verify 循环
    */
-  async *execute(userMessage: string, projectId: string, sessionId: string): AsyncIterable<PstepMessage> {
+  async *execute(userMessage: string, projectId: string, sessionId: string, agentId?: string): AsyncIterable<PstepMessage> {
     if (!this.orchestrator) {
       await this.initialize();
     }
 
-    const systemPrompt = await this.buildSystemPrompt(projectId);
-    
+    const systemPrompt = await this.buildSystemPrompt(projectId, agentId);
+
     // 临时覆盖 orchestrator 的 systemPrompt
     const originalBuild = (this.orchestrator as any).buildSystemPrompt;
     (this.orchestrator as any).buildSystemPrompt = () => systemPrompt;

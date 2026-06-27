@@ -21,6 +21,29 @@ export type RuleCategory =
   | 'key_learnings';
 
 // ============================================================================
+// 记忆类别
+// ============================================================================
+
+export type MemoryCategory =
+  | 'user_identity'
+  | 'user_preference'
+  | 'user_style'
+  | 'agent_personality'
+  | 'agent_experience'
+  | 'project_decision'
+  | 'project_context';
+
+export const MEMORY_CATEGORY_CONFIG: Record<MemoryCategory, { label: string; group: 'user' | 'agent' | 'project' }> = {
+  user_identity:       { label: '身份', group: 'user' },
+  user_preference:     { label: '偏好', group: 'user' },
+  user_style:          { label: '风格', group: 'user' },
+  agent_personality:   { label: '人格', group: 'agent' },
+  agent_experience:    { label: '经验', group: 'agent' },
+  project_decision:    { label: '决策', group: 'project' },
+  project_context:     { label: '上下文', group: 'project' },
+};
+
+// ============================================================================
 // 项目规则
 // ============================================================================
 
@@ -115,8 +138,11 @@ export type SessionMessage = Static<typeof SessionMessageSchema>;
 export const MemoryEntrySchema = Type.Object({
   id: Type.String(),
   projectId: Type.String(),
+  agentId: Type.Optional(Type.String()),
   category: Type.String(),
   summary: Type.String(),
+  importance: Type.Number({ default: 50 }),
+  source: Type.String({ default: 'manual' }),
   sourceSessionId: Type.Optional(Type.String()),
   createdAt: Type.Number(),
 });

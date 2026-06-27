@@ -153,29 +153,52 @@ export const messageApi = {
 export interface MemoryEntry {
   id: string;
   projectId: string;
+  agentId?: string;
   category: string;
   summary: string;
+  importance: number;
+  source: string;
   sourceSessionId?: string;
   createdAt: number;
 }
 
+export interface CreateMemoryRequest {
+  projectId: string;
+  agentId?: string;
+  category: string;
+  summary: string;
+  importance?: number;
+  source?: string;
+  sourceSessionId?: string;
+}
+
 export const memoryApi = {
-  list: (params: { projectId: string; category?: string }) => {
-    const query = new URLSearchParams({ projectId: params.projectId });
-    if (params.category) query.set('category', params.category);
-    return request<{ memories: MemoryEntry[] }>(`/api/memory?${query.toString()}`);
+  async list(params: { projectId: string; agentId?: string; category?: string }): Promise<{ memories: MemoryEntry[]; total: number }> {
+    const searchParams = new URLSearchParams({ projectId: params.projectId });
+    if (params.agentId) searchParams.set('agentId', params.agentId);
+    if (params.category) searchParams.set('category', params.category);
+    return request(`/api/memory?${searchParams.toString()}`);
   },
 
-  create: (data: { projectId: string; category: string; summary: string; sourceSessionId?: string }) =>
-    request<MemoryEntry>('/api/memory', {
+  async create(data: CreateMemoryRequest): Promise<{ status: string; memory: MemoryEntry }> {
+    return request('/api/memory', {
       method: 'POST',
       body: JSON.stringify(data),
-    }),
+    });
+  },
 
-  delete: (id: string) =>
-    request<{ status: string }>(`/api/memory/${id}`, {
+  async update(id: string, data: Partial<Pick<MemoryEntry, 'category' | 'summary' | 'importance'>>): Promise<{ status: string; memory?: MemoryEntry }> {
+    return request(`/api/memory/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async delete(id: string): Promise<{ status: string }> {
+    return request(`/api/memory/${id}`, {
       method: 'DELETE',
-    }),
+    });
+  },
 };
 
 // ============================================================================
