@@ -71,8 +71,9 @@
 
 ### 前端
 
-- [x] 对接 Agent Soul 配置 API
-- [x] 对接记忆管理 API
+- [ ] 对接 Agent Soul 配置 API（当前为 Mock 数据）
+- [ ] 对接记忆管理 API（当前为 Mock 数据）
+- [ ] 对接用户资料 API（当前为 Mock 数据）
 - [x] 实现消息搜索功能（对接搜索 API）
 
 ---
