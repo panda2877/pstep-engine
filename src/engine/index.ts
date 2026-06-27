@@ -145,14 +145,18 @@ export class PstepEngine {
     // 包装 saveMessages 以触发记忆提取
     const originalSaveMessages = this.options.saveMessages;
     const memoryExtractor = this.memoryExtractor;
+    const extractorProjectId = projectId;
+    const extractorAgentId = agentId;
     const wrappedSaveMessages = originalSaveMessages
       ? async (sid: string, entries: HistoryEntry[]) => {
           // 先保存消息
           await originalSaveMessages(sid, entries);
           // 然后异步提取记忆（不阻塞）
-          if (memoryExtractor && entries.length > 0) {
+          if (memoryExtractor && entries && entries.length > 0) {
+            console.log(`[PstepEngine] Triggering memory extraction for ${entries.length} entries`);
             memoryExtractor
-              .extract(entries, projectId, agentId, sid)
+              .extract(entries, extractorProjectId, extractorAgentId, sid)
+              .then((count) => console.log(`[PstepEngine] Memory extraction completed: ${count} new memories`))
               .catch((err) => console.error('[PstepEngine] Memory extraction failed:', err.message));
           }
         }

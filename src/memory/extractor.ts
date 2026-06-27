@@ -80,7 +80,12 @@ export class MemoryExtractor {
     agentId?: string,
     sourceSessionId?: string
   ): Promise<number> {
-    if (messages.length === 0) return 0;
+    if (!messages || messages.length === 0) {
+      console.log('[MemoryExtractor] No messages to extract from');
+      return 0;
+    }
+
+    console.log(`[MemoryExtractor] Extracting from ${messages.length} messages`);
 
     // 构建对话内容
     const conversation = messages
@@ -88,7 +93,10 @@ export class MemoryExtractor {
       .map((m) => `${m.role === 'user' ? '用户' : 'AI'}: ${m.content}`)
       .join('\n\n');
 
-    if (conversation.trim().length === 0) return 0;
+    if (conversation.trim().length === 0) {
+      console.log('[MemoryExtractor] No meaningful conversation content');
+      return 0;
+    }
 
     // 调用 LLM 提取
     const extracted = await this.callLlm(conversation);
@@ -155,7 +163,11 @@ export class MemoryExtractor {
       const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, content];
       const jsonStr = jsonMatch[1]?.trim() || content.trim();
 
-      return JSON.parse(jsonStr) as ExtractionResult;
+      console.log(`[MemoryExtractor] LLM response: ${jsonStr.substring(0, 200)}...`);
+
+      const result = JSON.parse(jsonStr) as ExtractionResult;
+      console.log(`[MemoryExtractor] Parsed ${result.memories?.length ?? 0} memories`);
+      return result;
     } catch (err) {
       console.error('[MemoryExtractor] LLM extraction failed:', (err as Error).message);
       return null;
