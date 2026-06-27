@@ -1,6 +1,6 @@
 /**
  * SearchModal 组件
- * 搜索弹窗：搜索会话内容，高亮匹配关键词
+ * 搜索弹窗：搜索会话内容，高亮匹配关键词，点击跳转到对应消息
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -10,6 +10,7 @@ interface SearchModalProps {
   isOpen: boolean;
   onClose: () => void;
   projectId?: string;
+  onSelect?: (sessionId: string, messageId: string) => void;
 }
 
 interface SearchResult {
@@ -18,9 +19,10 @@ interface SearchResult {
   content: string;
   role: string;
   createdAt: number;
+  projectId?: string;
 }
 
-export function SearchModal({ isOpen, onClose, projectId }: SearchModalProps) {
+export function SearchModal({ isOpen, onClose, projectId, onSelect }: SearchModalProps) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -83,8 +85,16 @@ export function SearchModal({ isOpen, onClose, projectId }: SearchModalProps) {
   };
 
   const formatTime = (ts: number) => {
+    if (!ts || isNaN(ts)) return '';
     const d = new Date(ts);
     return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+  };
+
+  const handleClick = (item: SearchResult) => {
+    if (onSelect) {
+      onSelect(item.sessionId, item.id);
+      onClose();
+    }
   };
 
   return (
@@ -169,6 +179,7 @@ export function SearchModal({ isOpen, onClose, projectId }: SearchModalProps) {
                 padding: '10px 14px',
                 borderBottom: index < results.length - 1 ? '1px solid var(--border-card)' : 'none',
               }}
+              onClick={() => handleClick(item)}
               onMouseEnter={(e) => {
                 (e.currentTarget as HTMLElement).style.background = 'var(--bg-card)';
               }}
@@ -188,7 +199,7 @@ export function SearchModal({ isOpen, onClose, projectId }: SearchModalProps) {
               <div
                 style={{ fontSize: 10, marginTop: 4, color: 'var(--text-secondary)' }}
               >
-                {item.role === 'user' ? '👤' : '🤖'} {formatTime(item.createdAt)}
+                {item.role === 'user' ? '👤 你' : '🤖 AI'} · {formatTime(item.createdAt)}
               </div>
             </div>
           ))}

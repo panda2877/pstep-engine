@@ -17,6 +17,7 @@ interface MessageAreaProps {
   projectId?: string;
   onToggleHelper: () => void;
   onBack?: () => void;
+  onSelectSession?: (sessionId: string) => void;
 }
 
 export function MessageArea({
@@ -27,6 +28,7 @@ export function MessageArea({
   projectId,
   onToggleHelper,
   onBack,
+  onSelectSession,
 }: MessageAreaProps) {
   const { state, fetchSessions } = useAppStore();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -153,7 +155,16 @@ export function MessageArea({
   return (
     <div className="flex flex-col flex-1 min-w-0" style={{ background: 'var(--bg-primary)' }}>
       {/* Search Modal */}
-      <SearchModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} projectId={projectId} />
+      <SearchModal
+        isOpen={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        projectId={projectId}
+        onSelect={(targetSessionId) => {
+          if (onSelectSession && targetSessionId !== sessionId) {
+            onSelectSession(targetSessionId);
+          }
+        }}
+      />
 
       {/* Message Header */}
       <div

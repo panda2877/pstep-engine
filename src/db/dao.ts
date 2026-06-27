@@ -214,15 +214,6 @@ const deleteMessagesBySession = db.prepare(`
   DELETE FROM session_messages WHERE session_id = ?
 `);
 
-const searchMessages = db.prepare(`
-  SELECT sm.*, s.project_id
-  FROM session_messages sm
-  JOIN sessions s ON sm.session_id = s.id
-  WHERE sm.content LIKE ? AND sm.role IN ('user', 'assistant')
-  ORDER BY sm.created_at DESC
-  LIMIT 50
-`);
-
 export const MessageDao = {
   create(message: Omit<SessionMessage, "id" | "createdAt">): SessionMessage {
     const id = uuidv4();
@@ -239,19 +230,28 @@ export const MessageDao = {
     deleteMessagesBySession.run(sessionId);
   },
 
-  search(query: string, projectId?: string): SessionMessage[] {
+  search(query: string, projectId?: string): Array<SessionMessage & { sessionId: string; projectId?: string }> {
     const pattern = `%${query}%`;
     if (projectId) {
       return db.prepare(`
-        SELECT sm.*, s.project_id
+        SELECT sm.id, sm.session_id AS sessionId, sm.role, sm.content, sm.metadata, sm.created_at AS createdAt,
+               s.project_id AS projectId
         FROM session_messages sm
         JOIN sessions s ON sm.session_id = s.id
         WHERE sm.content LIKE ? AND sm.role IN ('user', 'assistant') AND s.project_id = ?
         ORDER BY sm.created_at DESC
         LIMIT 50
-      `).all(pattern, projectId) as SessionMessage[];
+      `).all(pattern, projectId) as Array<SessionMessage & { sessionId: string; projectId?: string }>;
     }
-    return searchMessages.all(pattern) as SessionMessage[];
+    return db.prepare(`
+      SELECT sm.id, sm.session_id AS sessionId, sm.role, sm.content, sm.metadata, sm.created_at AS createdAt,
+             s.project_id AS projectId
+      FROM session_messages sm
+      JOIN sessions s ON sm.session_id = s.id
+      WHERE sm.content LIKE ? AND sm.role IN ('user', 'assistant')
+      ORDER BY sm.created_at DESC
+      LIMIT 50
+    `).all(pattern) as Array<SessionMessage & { sessionId: string; projectId?: string }>;
   },
 };
 

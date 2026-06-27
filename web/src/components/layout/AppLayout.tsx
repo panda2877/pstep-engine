@@ -80,6 +80,7 @@ export function AppLayout() {
             projectId={state.selectedProjectId || state.projects[0]?.id}
             onToggleHelper={handleToggleHelper}
             onBack={() => dispatch({ type: 'SET_MOBILE_VIEW', payload: 'agents' })}
+            onSelectSession={handleSessionSelect}
           />
         </div>
 
