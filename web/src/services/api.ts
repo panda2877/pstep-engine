@@ -138,8 +138,10 @@ export interface Message {
 }
 
 export const messageApi = {
-  search: (params: { sessionId: string; query: string }) => {
-    const query = new URLSearchParams(params);
+  search: (params: { q: string; projectId?: string }) => {
+    const query = new URLSearchParams();
+    query.set('q', params.q);
+    if (params.projectId) query.set('projectId', params.projectId);
     return request<{ results: Message[]; total: number }>(`/api/messages/search?${query.toString()}`);
   },
 };

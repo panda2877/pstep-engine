@@ -153,7 +153,7 @@ export function MessageArea({
   return (
     <div className="flex flex-col flex-1 min-w-0" style={{ background: 'var(--bg-primary)' }}>
       {/* Search Modal */}
-      <SearchModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
+      <SearchModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} projectId={projectId} />
 
       {/* Message Header */}
       <div

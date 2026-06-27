@@ -3,37 +3,38 @@
  * 搜索弹窗：搜索会话内容，高亮匹配关键词
  */
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { messageApi } from '../../services/api';
 
 interface SearchModalProps {
   isOpen: boolean;
   onClose: () => void;
+  projectId?: string;
 }
 
 interface SearchResult {
-  text: string;
-  time: string;
+  id: string;
+  sessionId: string;
+  content: string;
+  role: string;
+  createdAt: number;
 }
 
-const MOCK_MESSAGES: SearchResult[] = [
-  { text: '我想做一个跨端Agent连接工具，帮我分析一下可行性？', time: '今天 14:23:30' },
-  { text: '发现一个好消息——api_server 已经在端口 8642 上运行了', time: '今天 14:23:45' },
-  { text: '你好！我是紫灵 😏', time: '今天 14:23:15' },
-];
-
-export function SearchModal({ isOpen, onClose }: SearchModalProps) {
+export function SearchModal({ isOpen, onClose, projectId }: SearchModalProps) {
   const [query, setQuery] = useState('');
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       setQuery('');
-      // 延迟聚焦，等 transition 结束
+      setResults([]);
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [isOpen]);
 
-  // ESC 关闭
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) onClose();
@@ -42,13 +43,30 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
+  const doSearch = useCallback(async (q: string) => {
+    if (!q.trim()) {
+      setResults([]);
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await messageApi.search({ q: q.trim(), projectId });
+      setResults(res.results || []);
+    } catch (err) {
+      console.error('[Search] API error:', err);
+      setResults([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [projectId]);
 
-  const filtered = query.trim()
-    ? MOCK_MESSAGES.filter((m) =>
-        m.text.toLowerCase().includes(query.toLowerCase())
-      )
-    : [];
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => doSearch(query), 300);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [query, doSearch]);
+
+  if (!isOpen) return null;
 
   const hasQuery = query.trim().length > 0;
 
@@ -62,6 +80,11 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
         part
       )
     );
+  };
+
+  const formatTime = (ts: number) => {
+    const d = new Date(ts);
+    return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
   };
 
   return (
@@ -105,7 +128,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="搜索当前会话内容..."
+            placeholder="搜索所有会话内容..."
             className="flex-1 border-none outline-none"
             style={{
               background: 'transparent',
@@ -113,6 +136,9 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
               fontSize: 14,
             }}
           />
+          {loading && (
+            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>搜索中...</span>
+          )}
         </div>
 
         {/* Search Results */}
@@ -122,11 +148,11 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
               className="text-center"
               style={{ padding: 32, color: 'var(--text-secondary)', fontSize: 12 }}
             >
-              输入关键词搜索会话内容
+              输入关键词搜索所有会话内容
             </div>
           )}
 
-          {hasQuery && filtered.length === 0 && (
+          {hasQuery && !loading && results.length === 0 && (
             <div
               className="text-center"
               style={{ padding: 32, color: 'var(--text-secondary)', fontSize: 12 }}
@@ -135,13 +161,13 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
             </div>
           )}
 
-          {filtered.map((item, index) => (
+          {results.map((item, index) => (
             <div
-              key={index}
+              key={item.id}
               className="cursor-pointer transition-colors"
               style={{
                 padding: '10px 14px',
-                borderBottom: index < filtered.length - 1 ? '1px solid var(--border-card)' : 'none',
+                borderBottom: index < results.length - 1 ? '1px solid var(--border-card)' : 'none',
               }}
               onMouseEnter={(e) => {
                 (e.currentTarget as HTMLElement).style.background = 'var(--bg-card)';
@@ -157,12 +183,12 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                   color: 'var(--text-primary)',
                 }}
               >
-                {highlightText(item.text, query)}
+                {highlightText(item.content.length > 200 ? item.content.slice(0, 200) + '...' : item.content, query)}
               </div>
               <div
                 style={{ fontSize: 10, marginTop: 4, color: 'var(--text-secondary)' }}
               >
-                {item.time}
+                {item.role === 'user' ? '👤' : '🤖'} {formatTime(item.createdAt)}
               </div>
             </div>
           ))}

@@ -186,6 +186,19 @@ export function createServer(options: EngineServerOptions = {}) {
     return { status: deleted ? 'deleted' : 'not_found' };
   });
 
+  // ============================================================================
+  // Message Search API
+  // ============================================================================
+
+  server.get('/api/messages/search', async (request) => {
+    const query = request.query as { q?: string; projectId?: string };
+    if (!query.q || query.q.trim().length === 0) {
+      return { results: [], total: 0 };
+    }
+    const results = MessageDao.search(query.q.trim(), query.projectId);
+    return { results, total: results.length };
+  });
+
   function rawSse(reply: any, event: string, data: string) {
     const payload = `event: ${event}\ndata: ${data}\n\n`;
     reply.raw.write(payload);

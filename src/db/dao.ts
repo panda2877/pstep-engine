@@ -214,6 +214,15 @@ const deleteMessagesBySession = db.prepare(`
   DELETE FROM session_messages WHERE session_id = ?
 `);
 
+const searchMessages = db.prepare(`
+  SELECT sm.*, s.project_id
+  FROM session_messages sm
+  JOIN sessions s ON sm.session_id = s.id
+  WHERE sm.content LIKE ? AND sm.role IN ('user', 'assistant')
+  ORDER BY sm.created_at DESC
+  LIMIT 50
+`);
+
 export const MessageDao = {
   create(message: Omit<SessionMessage, "id" | "createdAt">): SessionMessage {
     const id = uuidv4();
@@ -228,6 +237,21 @@ export const MessageDao = {
 
   deleteBySession(sessionId: string): void {
     deleteMessagesBySession.run(sessionId);
+  },
+
+  search(query: string, projectId?: string): SessionMessage[] {
+    const pattern = `%${query}%`;
+    if (projectId) {
+      return db.prepare(`
+        SELECT sm.*, s.project_id
+        FROM session_messages sm
+        JOIN sessions s ON sm.session_id = s.id
+        WHERE sm.content LIKE ? AND sm.role IN ('user', 'assistant') AND s.project_id = ?
+        ORDER BY sm.created_at DESC
+        LIMIT 50
+      `).all(pattern, projectId) as SessionMessage[];
+    }
+    return searchMessages.all(pattern) as SessionMessage[];
   },
 };
 
