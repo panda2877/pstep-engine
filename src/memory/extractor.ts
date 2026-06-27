@@ -105,6 +105,7 @@ export class MemoryExtractor {
     // 去重并存储
     let storedCount = 0;
     for (const memory of extracted.memories) {
+      console.log(`[MemoryExtractor] Processing: [${memory.category}] ${memory.summary}`);
       const isDuplicate = this.checkDuplicate(memory, projectId);
       if (!isDuplicate) {
         MemoryDao.create({
@@ -117,6 +118,9 @@ export class MemoryExtractor {
           sourceSessionId,
         });
         storedCount++;
+        console.log(`[MemoryExtractor] Stored: ${memory.summary}`);
+      } else {
+        console.log(`[MemoryExtractor] Skipped duplicate: ${memory.summary}`);
       }
     }
 
@@ -132,8 +136,11 @@ export class MemoryExtractor {
       ? this.gatewayUrl
       : this.gatewayUrl + '/v1';
 
+    const url = `${baseUrl}/chat/completions`;
+    console.log(`[MemoryExtractor] Calling LLM at ${url}`);
+
     try {
-      const response = await fetch(`${baseUrl}/chat/completions`, {
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -150,26 +157,35 @@ export class MemoryExtractor {
         }),
       });
 
+      console.log(`[MemoryExtractor] LLM response status: ${response.status}`);
+
       if (!response.ok) {
-        console.error(`[MemoryExtractor] LLM request failed: ${response.status}`);
+        const errorText = await response.text();
+        console.error(`[MemoryExtractor] LLM request failed: ${response.status} - ${errorText}`);
         return null;
       }
 
       const data = await response.json() as any;
       const content = data.choices?.[0]?.message?.content;
-      if (!content) return null;
+      console.log(`[MemoryExtractor] LLM content length: ${content?.length ?? 0}`);
+
+      if (!content) {
+        console.log('[MemoryExtractor] No content in LLM response');
+        return null;
+      }
 
       // 解析 JSON（兼容 markdown code block）
       const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, content];
       const jsonStr = jsonMatch[1]?.trim() || content.trim();
 
-      console.log(`[MemoryExtractor] LLM response: ${jsonStr.substring(0, 200)}...`);
+      console.log(`[MemoryExtractor] LLM response: ${jsonStr.substring(0, 300)}...`);
 
       const result = JSON.parse(jsonStr) as ExtractionResult;
       console.log(`[MemoryExtractor] Parsed ${result.memories?.length ?? 0} memories`);
       return result;
     } catch (err) {
       console.error('[MemoryExtractor] LLM extraction failed:', (err as Error).message);
+      console.error('[MemoryExtractor] Stack:', (err as Error).stack);
       return null;
     }
   }
